@@ -1,0 +1,54 @@
+### Java Build ###
+*.class
+*.jar
+*.war
+*.ear
+
+### Build Directory ###
+!**/src/main/**/build/
+!**/src/test/**/build/
+
+### IDE Setting Files ###
+# IntelliJ #
+.idea
+*.iml
+*.ipr
+*.iws
+out/
+!**/src/main/**/out/
+!**/src/test/**/out/
+
+# VSCode #
+*vscode/
+
+### Log ###
+*.log
+
+### Environment ###
+*.env
+,env.*
+
+### Gradle ###
+.gradle
+build/
+!gradle/wrapper/gradle-wrapper.jar
+
+### STS ###
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+bin/
+!**/src/main/**/bin/
+!**/src/test/**/bin/
+
+### ETC ###
+HELP.md
+*.swp
+*~
+*.bak
+*.tmp
+*.orig
