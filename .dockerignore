@@ -1,0 +1,55 @@
+# Git 관련 파일
+.git
+.gitignore
+.gitattributes
+
+# IDE 관련 파일
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+.project
+.classpath
+.settings/
+
+# OS 파일
+.DS_Store
+Thumbs.db
+*.swp
+*.tmp
+
+# 빌드 결과물 (Docker가 직접 빌드할 것이므로 제외)
+build/
+target/
+*.jar
+*.war
+!gradle/wrapper/gradle-wrapper.jar
+
+# 로그 파일
+*.log
+logs/
+
+# 임시 파일
+*.pid
+*.tmp
+*.temp
+
+# 문서 파일
+README.md
+*.md
+docs/
+
+# Docker 관련 파일 (자기 자신 제외)
+docker-compose.yml
+docker-compose.*.yml
+.dockerignore
+
+# 테스트 관련
+*.test
+coverage/
+
+# 환경설정 파일 (민감 정보 포함 가능)
+.env
+.env.local
+.env.*.local
