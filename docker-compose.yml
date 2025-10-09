@@ -1,0 +1,99 @@
+version: '3.8'
+
+services:
+  # Member Service (Spring Boot with Java 21)
+  member-service:
+    build: 
+      context: .
+      dockerfile: Dockerfile
+      args:
+        - BUILD_DATE=$(date -u +'%Y-%m-%dT%H:%M:%SZ')
+        - JAVA_VERSION=21
+    container_name: member-service
+    hostname: member-service
+    ports:
+      - "8081:8081"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - TZ=Asia/Seoul
+      # Java 21 최적화 JVM 옵션
+      - JAVA_OPTS=-Xms256m -Xmx512m --enable-preview -XX:+UseZGC -XX:+UseStringDeduplication
+    depends_on:
+      member-db:
+        condition: service_healthy
+    networks:
+      - member-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8081/api/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    volumes:
+      - member-logs:/app/logs
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '1.0'
+        reservations:
+          memory: 256M
+          cpus: '0.5'
+
+  # Member Database (MySQL 8.0)
+  member-db:
+    image: mysql:8.0
+    container_name: member-db
+    hostname: member-db
+    ports:
+      - "3301:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: password
+      MYSQL_DATABASE: member_db
+      MYSQL_USER: memberuser
+      MYSQL_PASSWORD: memberpass
+      TZ: Asia/Seoul
+      MYSQL_CHARSET: utf8mb4
+      MYSQL_COLLATION: utf8mb4_unicode_ci
+    volumes:
+      - member_db_data:/var/lib/mysql
+      - ./docker/mysql/init:/docker-entrypoint-initdb.d
+      - ./docker/mysql/conf:/etc/mysql/conf.d
+    networks:
+      - member-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-ppassword"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    command: >
+      --default-authentication-plugin=mysql_native_password
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_unicode_ci
+      --sql_mode=STRICT_TRANS_TABLES,NO_ZERO_DATE,NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO
+      --max_connections=200
+      --innodb_buffer_pool_size=256M
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+
+volumes:
+  member_db_data:
+    driver: local
+    name: member_db_data
+  member-logs:
+    driver: local
+    name: member_logs
+
+networks:
+  member-network:
+    driver: bridge
+    name: member-network
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
