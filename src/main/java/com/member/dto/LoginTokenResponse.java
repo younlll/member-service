@@ -2,9 +2,13 @@ package com.member.dto;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
-import lombok.Data;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
 
-@Data
+@Getter
+@Builder
+@AllArgsConstructor
 public class LoginTokenResponse {
     
     @JsonProperty("token_type")
