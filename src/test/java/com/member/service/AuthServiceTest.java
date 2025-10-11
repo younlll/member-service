@@ -13,6 +13,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.reactive.function.client.WebClient;
 
+import com.member.dto.KakaoUserInfoResponse;
+import com.member.dto.LoginResponse;
 import com.member.dto.LoginTokenResponse;
 
 import reactor.core.publisher.Mono;
@@ -34,6 +36,9 @@ class AuthServiceTest {
 	private WebClient.RequestHeadersSpec<?> requestHeadersSpec;
 
 	@Mock
+	private WebClient.RequestHeadersUriSpec<?> requestHeadersUriSpec;
+
+	@Mock
 	private WebClient.ResponseSpec responseSpec;
 
 	@InjectMocks
@@ -45,6 +50,7 @@ class AuthServiceTest {
 		ReflectionTestUtils.setField(authService, "clientId", "test-client-id");
 		ReflectionTestUtils.setField(authService, "redirectUri", "http://localhost:8081/api/auth/kakao/callback");
 		ReflectionTestUtils.setField(authService, "tokenUrl", "https://kauth.kakao.com/oauth/token");
+		ReflectionTestUtils.setField(authService, "userInfoUrl", "https://kapi.kakao.com/v2/user/me");
 	}
 
 	@Test
@@ -77,17 +83,20 @@ class AuthServiceTest {
 	}
 
 	@Test
-	@DisplayName("유효한 인가 코드로 토큰 발급에 성공한다")
+	@DisplayName("유효한 인가 코드로 토큰 발급받아 사용자정보를 정상적으로 받아온다.")
 	void shouldGetTokenSuccessfully() {
 		// given
 		String authorizationCode = "test-authorization-code";
 
-		LoginTokenResponse mockResponse = new LoginTokenResponse();
-		mockResponse.setTokenType("bearer");
-		mockResponse.setAccessToken("test-access-token");
-		mockResponse.setExpiresIn(21599);
-		mockResponse.setRefreshToken("test-refresh-token");
-		mockResponse.setRefreshTokenExpiresIn(5183999);
+		LoginTokenResponse loginTokenMockResponse = LoginTokenResponse.builder()
+			.tokenType("bearer")
+			.accessToken("test-access-token")
+			.expiresIn(21599)
+			.refreshToken("test-refresh-token")
+			.refreshTokenExpiresIn(5183999)
+			.build();
+
+		KakaoUserInfoResponse kakaoUserInfoMockResponse = createKakaoUserInfoMockResponse();
 
 		given(webClient.post()).willReturn(requestBodyUriSpec);
 		given(requestBodyUriSpec.uri(anyString())).willReturn(requestBodySpec);
@@ -95,9 +104,16 @@ class AuthServiceTest {
 		given(requestBodySpec.bodyValue(any())).willAnswer(invocation -> requestHeadersSpec);
 		given(requestHeadersSpec.retrieve()).willReturn(responseSpec);
 		given(responseSpec.bodyToMono(LoginTokenResponse.class))
-			.willReturn(Mono.just(mockResponse));
+			.willReturn(Mono.just(loginTokenMockResponse));
 
-		LoginTokenResponse response = authService.login(authorizationCode);
+		given(webClient.get()).willAnswer(invocation -> requestHeadersUriSpec);
+		given(requestHeadersUriSpec.uri(anyString())).willAnswer(invocation -> requestHeadersUriSpec);
+		given(requestHeadersUriSpec.header(anyString(), anyString())).willAnswer(invocation -> requestHeadersUriSpec);
+		given(requestHeadersUriSpec.retrieve()).willReturn(responseSpec);
+		given(responseSpec.bodyToMono(KakaoUserInfoResponse.class))
+			.willReturn(Mono.just(kakaoUserInfoMockResponse));
+
+		LoginResponse response = authService.login(authorizationCode);
 
 		assertThat(response).isNotNull();
 		assertThat(response.getTokenType()).isEqualTo("bearer");
@@ -105,5 +121,21 @@ class AuthServiceTest {
 		assertThat(response.getExpiresIn()).isEqualTo(21599);
 		assertThat(response.getRefreshToken()).isEqualTo("test-refresh-token");
 		assertThat(response.getRefreshTokenExpiresIn()).isEqualTo(5183999);
+
+		assertThat(response.getKakaoId()).isEqualTo("1212343456");
+		assertThat(response.getEmail()).isEqualTo("kakaoLoginTest@example.com");
+		assertThat(response.getConnectedAt()).isNotNull();
+	}
+
+	private KakaoUserInfoResponse createKakaoUserInfoMockResponse() {
+		KakaoUserInfoResponse.KakaoAccount kakaoAccount = KakaoUserInfoResponse.KakaoAccount.builder()
+			.email("kakaoLoginTest@example.com")
+			.build();
+
+		return KakaoUserInfoResponse.builder()
+			.id(1212343456L)
+			.connectedAt("2025-10-11T09:00:00Z")
+			.kakaoAccount(kakaoAccount)
+			.build();
 	}
 }
