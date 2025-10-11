@@ -10,7 +10,9 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.member.dto.KakaoUserInfoResponse;
 import com.member.dto.LoginRequest;
+import com.member.dto.LoginResponse;
 import com.member.dto.LoginTokenResponse;
 import com.member.service.AuthService;
 
@@ -51,10 +53,10 @@ public class AuthController {
 	 * @return 인증 토큰 및 회원 정보
 	 */
 	@PostMapping("/login")
-	public ResponseEntity<LoginTokenResponse> login(@Valid @RequestBody LoginRequest request) {
+	public ResponseEntity<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
 		log.info("카카오 로그인 API 호출: code={}", request.getCode());
 
-		LoginTokenResponse response = authService.login(request.getCode());
+		LoginResponse response = authService.login(request.getCode());
 
 		return ResponseEntity.ok(response);
 	}
