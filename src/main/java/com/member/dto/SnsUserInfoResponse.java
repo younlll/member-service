@@ -11,7 +11,7 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class KakaoUserInfoResponse {
+public class SnsUserInfoResponse {
 
 	@JsonProperty("id")
 	private Long id;

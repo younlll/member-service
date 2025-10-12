@@ -16,21 +16,21 @@ public class LoginResponse {
 	private String refreshToken;
 	private Integer refreshTokenExpiresIn;
 
-	// KakaoUserInfoResponse 로그인 계정의 사용자 정보
+	// SnsUserInfoResponse 로그인 계정의 사용자 정보
 	private String kakaoId;
 	private String connectedAt;
 	private String email;
 
-	public static LoginResponse of(LoginTokenResponse loginTokenResponse, KakaoUserInfoResponse kakaoUserInfoResponse) {
+	public static LoginResponse of(LoginTokenResponse loginTokenResponse, SnsUserInfoResponse snsUserInfoResponse) {
 		return LoginResponse.builder()
 			.tokenType(loginTokenResponse.getTokenType())
 			.accessToken(loginTokenResponse.getAccessToken())
 			.expiresIn(loginTokenResponse.getExpiresIn())
 			.refreshToken(loginTokenResponse.getRefreshToken())
 			.refreshTokenExpiresIn(loginTokenResponse.getRefreshTokenExpiresIn())
-			.kakaoId(kakaoUserInfoResponse.getKakaoIdAsString())
-			.connectedAt(kakaoUserInfoResponse.getConnectedAt())
-			.email(kakaoUserInfoResponse.getKakaoAccount().getEmail())
+			.kakaoId(snsUserInfoResponse.getKakaoIdAsString())
+			.connectedAt(snsUserInfoResponse.getConnectedAt())
+			.email(snsUserInfoResponse.getKakaoAccount().getEmail())
 			.build();
 	}
 }

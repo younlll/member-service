@@ -10,10 +10,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.member.dto.KakaoUserInfoResponse;
 import com.member.dto.LoginRequest;
 import com.member.dto.LoginResponse;
-import com.member.dto.LoginTokenResponse;
 import com.member.service.AuthService;
 
 import jakarta.validation.Valid;

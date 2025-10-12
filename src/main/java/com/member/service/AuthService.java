@@ -1,6 +1,5 @@
 package com.member.service;
 
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
@@ -10,9 +9,10 @@ import org.springframework.util.MultiValueMap;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
 
-import com.member.dto.KakaoUserInfoResponse;
+import com.member.common.KakaoProperties;
 import com.member.dto.LoginResponse;
 import com.member.dto.LoginTokenResponse;
+import com.member.dto.SnsUserInfoResponse;
 import com.member.exception.MemberServiceApiException;
 
 import lombok.RequiredArgsConstructor;
@@ -24,27 +24,13 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class AuthService {
 
+    private final KakaoProperties kakaoProperties;
     private final WebClient webClient;
 
-    @Value("${kakao.auth-url}")
-    private String authUrl;
-
-    @Value("${kakao.client-id}")
-    private String clientId;
-
-    @Value("${kakao.redirect-uri}")
-    private String redirectUri;
-
-    @Value("${kakao.token-url}")
-    private String tokenUrl;
-
-    @Value("${kakao.user-info-url}")
-    private String userInfoUrl;
-
     public String getAuthUrl() {
-        return authUrl +
-                "?client_id=" + clientId +
-                "&redirect_uri=" + redirectUri +
+        return kakaoProperties.getAuthUrl() +
+                "?client_id=" + kakaoProperties.getClientId() +
+                "&redirect_uri=" + kakaoProperties.getRedirectUri() +
                 "&response_type=code";
     }
 
@@ -53,32 +39,32 @@ public class AuthService {
         log.info("카카오 로그인 시작");
 
         LoginTokenResponse loginTokenResponse = getAccessToken(code);
-        KakaoUserInfoResponse kakaoUserInfoResponse = getKakaoUserInfo(loginTokenResponse);
+        SnsUserInfoResponse snsUserInfoResponse = getKakaoUserInfo(loginTokenResponse);
 
 		return LoginResponse.of(
             loginTokenResponse,
-            kakaoUserInfoResponse
+            snsUserInfoResponse
         );
     }
 
-    private KakaoUserInfoResponse getKakaoUserInfo(LoginTokenResponse loginTokenResponse) {
+    private SnsUserInfoResponse getKakaoUserInfo(LoginTokenResponse loginTokenResponse) {
         log.info("카카오 사용자 정보 조회 시작");
 
         try {
-            KakaoUserInfoResponse kakaoUserInfoResponse = webClient.get()
-                .uri(userInfoUrl)
+            SnsUserInfoResponse snsUserInfoResponse = webClient.get()
+                .uri(kakaoProperties.getUserInfoUrl())
                 .header(HttpHeaders.AUTHORIZATION, "Bearer " + loginTokenResponse.getAccessToken())
                 .retrieve()
-                .bodyToMono(KakaoUserInfoResponse.class)
+                .bodyToMono(SnsUserInfoResponse.class)
                 .block();
 
-            if (kakaoUserInfoResponse == null) {
+            if (snsUserInfoResponse == null) {
                 throw new MemberServiceApiException("카카오 사용자 정보 응답이 없습니다.");
             }
 
-            log.info("카카오 사용자 정보 조회 성공: kakaoId={}, email={}", kakaoUserInfoResponse.getId(), kakaoUserInfoResponse.getKakaoAccount().getEmail());
+            log.info("카카오 사용자 정보 조회 성공: kakaoId={}, email={}", snsUserInfoResponse.getId(), snsUserInfoResponse.getKakaoAccount().getEmail());
 
-            return kakaoUserInfoResponse;
+            return snsUserInfoResponse;
         } catch (WebClientResponseException e) {
             log.error("카카오 사용자 정보 조회 실패: status={}, body={}", e.getStatusCode(), e.getResponseBodyAsString());
             throw new MemberServiceApiException("카카오 사용자 정보 조회에 실패했습니다: " + e.getMessage());
@@ -90,13 +76,13 @@ public class AuthService {
 
         MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
         params.add("grant_type", "authorization_code");
-        params.add("client_id", clientId);
-        params.add("redirect_uri", redirectUri);
+        params.add("client_id", kakaoProperties.getClientId());
+        params.add("redirect_uri", kakaoProperties.getRedirectUri());
         params.add("code", code);
 
         try {
             LoginTokenResponse response = webClient.post()
-                .uri(tokenUrl)
+                .uri(kakaoProperties.getTokenUrl())
                 .contentType(MediaType.APPLICATION_FORM_URLENCODED)
                 .bodyValue(params)
                 .retrieve()

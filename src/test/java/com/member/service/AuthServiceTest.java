@@ -10,18 +10,24 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.test.util.ReflectionTestUtils;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 import org.springframework.web.reactive.function.client.WebClient;
 
-import com.member.dto.KakaoUserInfoResponse;
+import com.member.common.KakaoProperties;
 import com.member.dto.LoginResponse;
 import com.member.dto.LoginTokenResponse;
+import com.member.dto.SnsUserInfoResponse;
 
 import reactor.core.publisher.Mono;
 
 @ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 @DisplayName("AuthService 단위 테스트")
 class AuthServiceTest {
+
+	@Mock
+	private KakaoProperties kakaoProperties;
 
 	@Mock
 	private WebClient webClient;
@@ -46,11 +52,11 @@ class AuthServiceTest {
 
 	@BeforeEach
 	void setUp() {
-		ReflectionTestUtils.setField(authService, "authUrl", "https://kauth.kakao.com/oauth/authorize/");
-		ReflectionTestUtils.setField(authService, "clientId", "test-client-id");
-		ReflectionTestUtils.setField(authService, "redirectUri", "http://localhost:8081/api/auth/kakao/callback");
-		ReflectionTestUtils.setField(authService, "tokenUrl", "https://kauth.kakao.com/oauth/token");
-		ReflectionTestUtils.setField(authService, "userInfoUrl", "https://kapi.kakao.com/v2/user/me");
+		given(kakaoProperties.getAuthUrl()).willReturn("https://kauth.kakao.com/oauth/authorize/");
+		given(kakaoProperties.getClientId()).willReturn("test-client-id");
+		given(kakaoProperties.getRedirectUri()).willReturn("http://localhost:8081/api/auth/kakao/callback");
+		given(kakaoProperties.getTokenUrl()).willReturn("https://kauth.kakao.com/oauth/token");
+		given(kakaoProperties.getUserInfoUrl()).willReturn("https://kapi.kakao.com/v2/user/me");
 	}
 
 	@Test
@@ -96,7 +102,7 @@ class AuthServiceTest {
 			.refreshTokenExpiresIn(5183999)
 			.build();
 
-		KakaoUserInfoResponse kakaoUserInfoMockResponse = createKakaoUserInfoMockResponse();
+		SnsUserInfoResponse kakaoUserInfoMockResponse = createKakaoUserInfoMockResponse();
 
 		given(webClient.post()).willReturn(requestBodyUriSpec);
 		given(requestBodyUriSpec.uri(anyString())).willReturn(requestBodySpec);
@@ -110,7 +116,7 @@ class AuthServiceTest {
 		given(requestHeadersUriSpec.uri(anyString())).willAnswer(invocation -> requestHeadersUriSpec);
 		given(requestHeadersUriSpec.header(anyString(), anyString())).willAnswer(invocation -> requestHeadersUriSpec);
 		given(requestHeadersUriSpec.retrieve()).willReturn(responseSpec);
-		given(responseSpec.bodyToMono(KakaoUserInfoResponse.class))
+		given(responseSpec.bodyToMono(SnsUserInfoResponse.class))
 			.willReturn(Mono.just(kakaoUserInfoMockResponse));
 
 		LoginResponse response = authService.login(authorizationCode);
@@ -127,12 +133,12 @@ class AuthServiceTest {
 		assertThat(response.getConnectedAt()).isNotNull();
 	}
 
-	private KakaoUserInfoResponse createKakaoUserInfoMockResponse() {
-		KakaoUserInfoResponse.KakaoAccount kakaoAccount = KakaoUserInfoResponse.KakaoAccount.builder()
+	private SnsUserInfoResponse createKakaoUserInfoMockResponse() {
+		SnsUserInfoResponse.KakaoAccount kakaoAccount = SnsUserInfoResponse.KakaoAccount.builder()
 			.email("kakaoLoginTest@example.com")
 			.build();
 
-		return KakaoUserInfoResponse.builder()
+		return SnsUserInfoResponse.builder()
 			.id(1212343456L)
 			.connectedAt("2025-10-11T09:00:00Z")
 			.kakaoAccount(kakaoAccount)
