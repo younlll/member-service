@@ -3,6 +3,8 @@ package com.member.service;
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.BDDMockito.*;
 
+import java.time.LocalDateTime;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -15,6 +17,9 @@ import org.mockito.quality.Strictness;
 import org.springframework.web.reactive.function.client.WebClient;
 
 import com.member.common.KakaoProperties;
+import com.member.common.MemberStatus;
+import com.member.common.SnsProvider;
+import com.member.domain.Member;
 import com.member.dto.LoginResponse;
 import com.member.dto.LoginTokenResponse;
 import com.member.dto.SnsUserInfoResponse;
@@ -47,8 +52,15 @@ class AuthServiceTest {
 	@Mock
 	private WebClient.ResponseSpec responseSpec;
 
+	@Mock
+	private MemberService memberService;
+
 	@InjectMocks
 	private AuthService authService;
+
+	private static final Long TEST_MEMBER_ID = 1L;
+	private static final String TEST_KAKAO_ID = "1212343456";
+	private static final String TEST_KAKAO_EMAIL = "kakaoLoginTest@example.com";
 
 	@BeforeEach
 	void setUp() {
@@ -89,20 +101,48 @@ class AuthServiceTest {
 	}
 
 	@Test
-	@DisplayName("유효한 인가 코드로 토큰 발급받아 사용자정보를 정상적으로 받아온다.")
-	void shouldGetTokenSuccessfully() {
+	@DisplayName("신규 회원 로그인 시, 소셜로그인 정보를 바탕으로 회원을 생성한다")
+	void shouldNewMemberLoginSuccessfully() {
 		// given
 		String authorizationCode = "test-authorization-code";
 
-		LoginTokenResponse loginTokenMockResponse = LoginTokenResponse.builder()
-			.tokenType("bearer")
-			.accessToken("test-access-token")
-			.expiresIn(21599)
-			.refreshToken("test-refresh-token")
-			.refreshTokenExpiresIn(5183999)
+		LoginTokenResponse loginTokenMockResponse = createTokenMockResponse();
+		SnsUserInfoResponse kakaoUserInfoMockResponse = createKakaoUserInfoMockResponse();
+
+		Member newMember = Member.builder()
+			.id(TEST_MEMBER_ID)
+			.snsProvider(SnsProvider.KAKAO)
+			.socialId(TEST_KAKAO_ID)
+			.email(TEST_KAKAO_EMAIL)
+			.status(MemberStatus.INACTIVE)
+			.lastLoginAt(LocalDateTime.now())
 			.build();
 
-		SnsUserInfoResponse kakaoUserInfoMockResponse = createKakaoUserInfoMockResponse();
+		given(memberService.findBySocialId(SnsProvider.KAKAO, TEST_KAKAO_ID)).willReturn(java.util.Optional.empty());
+		given(memberService.createdFromSnsUser(any(SnsUserInfoResponse.class))).willReturn(newMember);
+
+		setupWebClientMocks(loginTokenMockResponse, kakaoUserInfoMockResponse);
+
+		LoginResponse response = authService.login(authorizationCode);
+
+		assertThat(response).isNotNull();
+		assertThat(response.getTokenType()).isEqualTo("Bearer");
+		assertThat(response.getAccessToken()).isEqualTo("test-access-token");
+		assertThat(response.getExpiresIn()).isEqualTo(21599);
+		assertThat(response.getRefreshToken()).isEqualTo("test-refresh-token");
+		assertThat(response.getRefreshTokenExpiresIn()).isEqualTo(5183999);
+
+		assertThat(response.getKakaoId()).isEqualTo(TEST_KAKAO_ID);
+		assertThat(response.getEmail()).isEqualTo(TEST_KAKAO_EMAIL);
+		assertThat(response.getConnectedAt()).isNotNull();
+
+		assertThat(response.getIsNewMember()).isTrue();
+
+		verify(memberService).createdFromSnsUser(any(SnsUserInfoResponse.class));
+	}
+
+	private void setupWebClientMocks(LoginTokenResponse loginTokenMockResponse,
+		SnsUserInfoResponse kakaoUserInfoMockResponse) {
 
 		given(webClient.post()).willReturn(requestBodyUriSpec);
 		given(requestBodyUriSpec.uri(anyString())).willReturn(requestBodySpec);
@@ -118,19 +158,16 @@ class AuthServiceTest {
 		given(requestHeadersUriSpec.retrieve()).willReturn(responseSpec);
 		given(responseSpec.bodyToMono(SnsUserInfoResponse.class))
 			.willReturn(Mono.just(kakaoUserInfoMockResponse));
+	}
 
-		LoginResponse response = authService.login(authorizationCode);
-
-		assertThat(response).isNotNull();
-		assertThat(response.getTokenType()).isEqualTo("bearer");
-		assertThat(response.getAccessToken()).isEqualTo("test-access-token");
-		assertThat(response.getExpiresIn()).isEqualTo(21599);
-		assertThat(response.getRefreshToken()).isEqualTo("test-refresh-token");
-		assertThat(response.getRefreshTokenExpiresIn()).isEqualTo(5183999);
-
-		assertThat(response.getKakaoId()).isEqualTo("1212343456");
-		assertThat(response.getEmail()).isEqualTo("kakaoLoginTest@example.com");
-		assertThat(response.getConnectedAt()).isNotNull();
+	private LoginTokenResponse createTokenMockResponse() {
+		return LoginTokenResponse.builder()
+			.tokenType("Bearer")
+			.accessToken("test-access-token")
+			.expiresIn(21599)
+			.refreshToken("test-refresh-token")
+			.refreshTokenExpiresIn(5183999)
+			.build();
 	}
 
 	private SnsUserInfoResponse createKakaoUserInfoMockResponse() {
