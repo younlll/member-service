@@ -21,7 +21,15 @@ public class LoginResponse {
 	private String connectedAt;
 	private String email;
 
-	public static LoginResponse of(LoginTokenResponse loginTokenResponse, SnsUserInfoResponse snsUserInfoResponse) {
+	private Boolean isNewMember;
+	private String memberId;
+
+	public static LoginResponse of(
+		LoginTokenResponse loginTokenResponse,
+		SnsUserInfoResponse snsUserInfoResponse,
+		Boolean isNewMember,
+		String memberId
+	) {
 		return LoginResponse.builder()
 			.tokenType(loginTokenResponse.getTokenType())
 			.accessToken(loginTokenResponse.getAccessToken())
@@ -31,6 +39,8 @@ public class LoginResponse {
 			.kakaoId(snsUserInfoResponse.getKakaoIdAsString())
 			.connectedAt(snsUserInfoResponse.getConnectedAt())
 			.email(snsUserInfoResponse.getKakaoAccount().getEmail())
+			.isNewMember(isNewMember)
+			.memberId(memberId)
 			.build();
 	}
 }

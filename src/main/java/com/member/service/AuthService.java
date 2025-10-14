@@ -1,5 +1,7 @@
 package com.member.service;
 
+import java.util.Optional;
+
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
@@ -10,6 +12,8 @@ import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
 
 import com.member.common.KakaoProperties;
+import com.member.common.SnsProvider;
+import com.member.domain.Member;
 import com.member.dto.LoginResponse;
 import com.member.dto.LoginTokenResponse;
 import com.member.dto.SnsUserInfoResponse;
@@ -27,6 +31,8 @@ public class AuthService {
     private final KakaoProperties kakaoProperties;
     private final WebClient webClient;
 
+    private final MemberService memberService;
+
     public String getAuthUrl() {
         return kakaoProperties.getAuthUrl() +
                 "?client_id=" + kakaoProperties.getClientId() +
@@ -38,12 +44,27 @@ public class AuthService {
     public LoginResponse login(String code) {
         log.info("카카오 로그인 시작");
 
+        boolean isNewMember = false;
+
         LoginTokenResponse loginTokenResponse = getAccessToken(code);
         SnsUserInfoResponse snsUserInfoResponse = getKakaoUserInfo(loginTokenResponse);
+        Optional<Member> existingMemberInformation = memberService.findBySocialId(SnsProvider.KAKAO,
+            snsUserInfoResponse.getKakaoIdAsString()
+        );
+
+        Member member;
+        if (existingMemberInformation.isEmpty()) {
+            isNewMember = true;
+            member = memberService.createdFromSnsUser(snsUserInfoResponse);
+        } else {
+            member = existingMemberInformation.get();
+        }
 
 		return LoginResponse.of(
             loginTokenResponse,
-            snsUserInfoResponse
+            snsUserInfoResponse,
+            isNewMember,
+			String.valueOf(member.getId())
         );
     }
 
