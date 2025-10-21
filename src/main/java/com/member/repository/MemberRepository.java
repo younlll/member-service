@@ -11,5 +11,5 @@ import com.member.domain.Member;
 @Repository
 public interface MemberRepository extends JpaRepository<Member, Long> {
 
-	Optional<Member> findBySnsProviderAndSocialId(SnsProvider snsProvider, String socialId) ;
+	Optional<Member> findBySnsProviderAndSocialId(SnsProvider snsProvider, String socialId);
 }
