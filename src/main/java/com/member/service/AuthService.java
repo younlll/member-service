@@ -17,7 +17,9 @@ import com.member.domain.Member;
 import com.member.dto.LoginResponse;
 import com.member.dto.LoginTokenResponse;
 import com.member.dto.SnsUserInfoResponse;
+import com.member.exception.ErrorCode;
 import com.member.exception.MemberServiceApiException;
+import com.member.security.JwtTokenProvider;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -28,98 +30,119 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class AuthService {
 
-    private final KakaoProperties kakaoProperties;
-    private final WebClient webClient;
+	private final KakaoProperties kakaoProperties;
+	private final WebClient webClient;
 
-    private final MemberService memberService;
+	private final JwtTokenProvider jwtTokenProvider;
 
-    public String getAuthUrl() {
-        return kakaoProperties.getAuthUrl() +
-                "?client_id=" + kakaoProperties.getClientId() +
-                "&redirect_uri=" + kakaoProperties.getRedirectUri() +
-                "&response_type=code";
-    }
+	private final MemberService memberService;
+
+	public String getAuthUrl() {
+		return kakaoProperties.getAuthUrl() + "?client_id=" + kakaoProperties.getClientId() + "&redirect_uri="
+			+ kakaoProperties.getRedirectUri() + "&response_type=code";
+	}
 
 	@Transactional
-    public LoginResponse login(String code) {
-        log.info("카카오 로그인 시작");
+	public LoginResponse login(String code) {
+		log.info("카카오 로그인 시작");
 
-        boolean isNewMember = false;
+		boolean isNewMember = false;
 
-        LoginTokenResponse loginTokenResponse = getAccessToken(code);
-        SnsUserInfoResponse snsUserInfoResponse = getKakaoUserInfo(loginTokenResponse);
-        Optional<Member> existingMemberInformation = memberService.findBySocialId(SnsProvider.KAKAO,
-            snsUserInfoResponse.getKakaoIdAsString()
-        );
+		LoginTokenResponse loginTokenResponse = getAccessToken(code);
+		SnsUserInfoResponse snsUserInfoResponse = getKakaoUserInfo(loginTokenResponse);
 
-        Member member;
-        if (existingMemberInformation.isEmpty()) {
-            isNewMember = true;
-            member = memberService.createdFromSnsUser(snsUserInfoResponse);
-        } else {
-            member = existingMemberInformation.get();
-        }
+		String accessToken = jwtTokenProvider.generateAccessToken(
+			Long.parseLong(snsUserInfoResponse.getKakaoIdAsString()), snsUserInfoResponse.getKakaoIdAsString(),
+			SnsProvider.KAKAO.name());
 
-		return LoginResponse.of(
-            loginTokenResponse,
-            snsUserInfoResponse,
-            isNewMember,
-			String.valueOf(member.getId())
-        );
-    }
+		String refreshToken = jwtTokenProvider.generateRefreshToken(
+			Long.parseLong(snsUserInfoResponse.getKakaoIdAsString()));
 
-    private SnsUserInfoResponse getKakaoUserInfo(LoginTokenResponse loginTokenResponse) {
-        log.info("카카오 사용자 정보 조회 시작");
+		Optional<Member> existingMemberInformation = memberService.findBySocialId(SnsProvider.KAKAO,
+			snsUserInfoResponse.getKakaoIdAsString());
 
-        try {
-            SnsUserInfoResponse snsUserInfoResponse = webClient.get()
-                .uri(kakaoProperties.getUserInfoUrl())
-                .header(HttpHeaders.AUTHORIZATION, "Bearer " + loginTokenResponse.getAccessToken())
-                .retrieve()
-                .bodyToMono(SnsUserInfoResponse.class)
-                .block();
+		Member member;
+		if (existingMemberInformation.isEmpty()) {
+			isNewMember = true;
+			member = memberService.createdFromSnsUser(snsUserInfoResponse);
+		} else {
+			member = existingMemberInformation.get();
+		}
 
-            if (snsUserInfoResponse == null) {
-                throw new MemberServiceApiException("카카오 사용자 정보 응답이 없습니다.");
-            }
+		return LoginResponse.of(accessToken, refreshToken, jwtTokenProvider.getAccessTokenExpiresIn(),
+			snsUserInfoResponse, isNewMember, String.valueOf(member.getId()));
+	}
 
-            log.info("카카오 사용자 정보 조회 성공: kakaoId={}, email={}", snsUserInfoResponse.getId(), snsUserInfoResponse.getKakaoAccount().getEmail());
+	private SnsUserInfoResponse getKakaoUserInfo(LoginTokenResponse loginTokenResponse) {
+		log.info("카카오 사용자 정보 조회 시작");
 
-            return snsUserInfoResponse;
-        } catch (WebClientResponseException e) {
-            log.error("카카오 사용자 정보 조회 실패: status={}, body={}", e.getStatusCode(), e.getResponseBodyAsString());
-            throw new MemberServiceApiException("카카오 사용자 정보 조회에 실패했습니다: " + e.getMessage());
-        }
-    }
+		try {
+			SnsUserInfoResponse snsUserInfoResponse = webClient.get()
+				.uri(kakaoProperties.getUserInfoUrl())
+				.header(HttpHeaders.AUTHORIZATION, "Bearer " + loginTokenResponse.getAccessToken())
+				.retrieve()
+				.bodyToMono(SnsUserInfoResponse.class)
+				.block();
 
-    private LoginTokenResponse getAccessToken(String code) {
-        log.info("로그인을 위한 Access Token 요청 시작: code={}", code);
+			if (snsUserInfoResponse == null) {
+				log.error("카카오 사용자 정보 응답이 null입니다");
+				throw new MemberServiceApiException("카카오 사용자 정보 응답이 없습니다.");
+			}
 
-        MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
-        params.add("grant_type", "authorization_code");
-        params.add("client_id", kakaoProperties.getClientId());
-        params.add("redirect_uri", kakaoProperties.getRedirectUri());
-        params.add("code", code);
+			log.info("카카오 사용자 정보 조회 성공: kakaoId={}, email={}", snsUserInfoResponse.getId(),
+				snsUserInfoResponse.getKakaoAccount().getEmail());
 
-        try {
-            LoginTokenResponse response = webClient.post()
-                .uri(kakaoProperties.getTokenUrl())
-                .contentType(MediaType.APPLICATION_FORM_URLENCODED)
-                .bodyValue(params)
-                .retrieve()
-                .bodyToMono(LoginTokenResponse.class)
-                .block();
+			return snsUserInfoResponse;
+		} catch (WebClientResponseException e) {
+			log.error("카카오 사용자 정보 조회 실패: status={}, body={}", e.getStatusCode(), e.getResponseBodyAsString());
+			if (e.getStatusCode().value() == 401) {
+				throw new MemberServiceApiException("유효하지 않은 카카오 토큰입니다", ErrorCode.INVALID_TOKEN);
+			} else {
+				throw new MemberServiceApiException("카카오 사용자 정보 조회에 실패했습니다", ErrorCode.EXTERNAL_API_ERROR);
+			}
+		} catch (Exception e) {
+			log.error("카카오 사용자 정보 조회 중 예외 발생", e);
+			throw new MemberServiceApiException("카카오 API 호출 중 오류가 발생했습니다", ErrorCode.EXTERNAL_API_ERROR);
+		}
+	}
 
-            if (response == null) {
-                throw new MemberServiceApiException("토큰 응답이 없습니다.");
-            }
+	private LoginTokenResponse getAccessToken(String code) {
+		log.info("로그인을 위한 Access Token 요청 시작: code={}", code);
 
-            log.info("로그인 Access Token 발급 성공");
-            return response;
-        } catch (WebClientResponseException e) {
-            log.error("Access Token 발급 실패: status={}, body={}",
-                e.getStatusCode(), e.getResponseBodyAsString());
-            throw new MemberServiceApiException("토큰 발급에 실패했습니다: " + e.getMessage());
-        }
-    }
+		MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
+		params.add("grant_type", "authorization_code");
+		params.add("client_id", kakaoProperties.getClientId());
+		params.add("redirect_uri", kakaoProperties.getRedirectUri());
+		params.add("code", code);
+
+		try {
+			LoginTokenResponse response = webClient.post()
+				.uri(kakaoProperties.getTokenUrl())
+				.contentType(MediaType.APPLICATION_FORM_URLENCODED)
+				.bodyValue(params)
+				.retrieve()
+				.bodyToMono(LoginTokenResponse.class)
+				.block();
+
+			if (response == null) {
+				log.error("카카오 토큰 응답이 null입니다");
+				throw new MemberServiceApiException("토큰 응답이 없습니다.", ErrorCode.EXTERNAL_API_ERROR);
+			}
+
+			log.info("로그인 Access Token 발급 성공");
+			return response;
+		} catch (WebClientResponseException e) {
+			log.error("Access Token 발급 실패: status={}, body={}", e.getStatusCode(), e.getResponseBodyAsString());
+			if (e.getStatusCode().value() == 400) {
+				throw new MemberServiceApiException(ErrorCode.INVALID_TOKEN_VALUE);
+			} else if (e.getStatusCode().value() == 401) {
+				throw new MemberServiceApiException("인증에 실패했습니다", ErrorCode.INVALID_TOKEN);
+			} else {
+				throw new MemberServiceApiException("카카오 토큰 발급에 실패했습니다", ErrorCode.EXTERNAL_API_ERROR);
+			}
+		} catch (Exception e) {
+			log.error("카카오 토큰 발급 중 예외 발생", e);
+			throw new MemberServiceApiException("카카오 API 호출 중 오류가 발생했습니다", ErrorCode.EXTERNAL_API_ERROR);
+		}
+	}
 }

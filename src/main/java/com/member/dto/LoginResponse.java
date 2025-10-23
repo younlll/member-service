@@ -12,9 +12,9 @@ public class LoginResponse {
 	// LoginTokenResponse 토큰 정보
 	private String tokenType;
 	private String accessToken;
-	private Integer expiresIn;
+	private Long expiresIn;
 	private String refreshToken;
-	private Integer refreshTokenExpiresIn;
+	private Long refreshTokenExpiresIn;
 
 	// SnsUserInfoResponse 로그인 계정의 사용자 정보
 	private String kakaoId;
@@ -25,17 +25,18 @@ public class LoginResponse {
 	private String memberId;
 
 	public static LoginResponse of(
-		LoginTokenResponse loginTokenResponse,
+		String accessToken,
+		String refreshToken,
+		Long expiresIn,
 		SnsUserInfoResponse snsUserInfoResponse,
 		Boolean isNewMember,
 		String memberId
 	) {
 		return LoginResponse.builder()
-			.tokenType(loginTokenResponse.getTokenType())
-			.accessToken(loginTokenResponse.getAccessToken())
-			.expiresIn(loginTokenResponse.getExpiresIn())
-			.refreshToken(loginTokenResponse.getRefreshToken())
-			.refreshTokenExpiresIn(loginTokenResponse.getRefreshTokenExpiresIn())
+			.tokenType("Bearer")
+			.accessToken(accessToken)
+			.expiresIn(expiresIn)
+			.refreshToken(refreshToken)
 			.kakaoId(snsUserInfoResponse.getKakaoIdAsString())
 			.connectedAt(snsUserInfoResponse.getConnectedAt())
 			.email(snsUserInfoResponse.getKakaoAccount().getEmail())
