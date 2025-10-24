@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.*;
 import static org.mockito.BDDMockito.*;
 
 import java.time.LocalDateTime;
+import java.util.Optional;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -25,8 +26,10 @@ import com.member.domain.Member;
 import com.member.dto.LoginResponse;
 import com.member.dto.LoginTokenResponse;
 import com.member.dto.SnsUserInfoResponse;
+import com.member.dto.TokenRefreshResponse;
 import com.member.exception.ErrorCode;
 import com.member.exception.MemberServiceApiException;
+import com.member.repository.RefreshTokenRepository;
 import com.member.security.JwtTokenProvider;
 
 import reactor.core.publisher.Mono;
@@ -63,8 +66,13 @@ class AuthServiceTest {
 	@Mock
 	private JwtTokenProvider jwtTokenProvider;
 
+	@Mock
+	private RefreshTokenRepository refreshTokenRepository;
+
 	@InjectMocks
 	private AuthService authService;
+
+	private Member testMember;
 
 	private static final Long TEST_MEMBER_ID = 1L;
 	private static final String TEST_KAKAO_ID = "1212343456";
@@ -79,6 +87,14 @@ class AuthServiceTest {
 		given(kakaoProperties.getRedirectUri()).willReturn("http://localhost:8081/api/auth/kakao/callback");
 		given(kakaoProperties.getTokenUrl()).willReturn("https://kauth.kakao.com/oauth/token");
 		given(kakaoProperties.getUserInfoUrl()).willReturn("https://kapi.kakao.com/v2/user/me");
+
+		testMember = Member.builder()
+			.id(1L)
+			.snsProvider(SnsProvider.KAKAO)
+			.socialId("1234567890")
+			.email("test@example.com")
+			.status(MemberStatus.ACTIVE)
+			.build();
 	}
 
 	@Test
@@ -213,6 +229,55 @@ class AuthServiceTest {
 		assertThatThrownBy(() -> authService.login(authorizationCode))
 			.isInstanceOf(MemberServiceApiException.class)
 			.hasMessageContaining("유효하지 않은 카카오 토큰입니다");
+	}
+
+	@Test
+	@DisplayName("유효한 Refresh Token으로 Access Token 재발급 성공")
+	void shouldRefreshAccessTokenSuccessfully() {
+		// given
+		given(jwtTokenProvider.validateToken(TEST_REFRESH_TOKEN)).willReturn(true);
+		given(jwtTokenProvider.getMemberIdFromToken(TEST_REFRESH_TOKEN)).willReturn(1L);
+		given(refreshTokenRepository.findByMemberId(1L)).willReturn(Optional.of(TEST_REFRESH_TOKEN));
+		given(memberService.findById(1L)).willReturn(testMember);
+		given(jwtTokenProvider.generateAccessToken(1L, "1234567890", "KAKAO"))
+			.willReturn("new-access-token");
+		given(jwtTokenProvider.getAccessTokenExpiresIn()).willReturn(86400L);
+
+		// when
+		TokenRefreshResponse response = authService.refreshAccessToken(TEST_REFRESH_TOKEN);
+
+		// then
+		assertThat(response).isNotNull();
+		assertThat(response.getTokenType()).isEqualTo("Bearer");
+		assertThat(response.getAccessToken()).isEqualTo("new-access-token");
+		assertThat(response.getExpiresIn()).isEqualTo(86400L);
+	}
+
+	@Test
+	@DisplayName("유효하지 않은 Refresh Token으로 재발급 실패")
+	void shouldFailToRefreshWithInvalidToken() {
+		// given
+		String invalidToken = "invalid-token";
+		given(jwtTokenProvider.validateToken(invalidToken)).willReturn(false);
+
+		// when & then
+		assertThatThrownBy(() -> authService.refreshAccessToken(invalidToken))
+			.isInstanceOf(MemberServiceApiException.class)
+			.hasMessageContaining("유효하지 않은 Refresh Token입니다");
+	}
+
+	@Test
+	@DisplayName("Redis에 저장된 토큰과 불일치하면 재발급 실패")
+	void shouldFailToRefreshWithMismatchedToken() {
+		// given
+		given(jwtTokenProvider.validateToken(TEST_REFRESH_TOKEN)).willReturn(true);
+		given(jwtTokenProvider.getMemberIdFromToken(TEST_REFRESH_TOKEN)).willReturn(1L);
+		given(refreshTokenRepository.findByMemberId(1L)).willReturn(Optional.of("different-token"));
+
+		// when & then
+		assertThatThrownBy(() -> authService.refreshAccessToken(TEST_REFRESH_TOKEN))
+			.isInstanceOf(MemberServiceApiException.class)
+			.hasMessageContaining("유효하지 않은 Refresh Token입니다");
 	}
 
 	private void setupWebClientMocks(LoginTokenResponse loginTokenMockResponse,
