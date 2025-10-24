@@ -10,6 +10,8 @@ import com.member.common.MemberStatus;
 import com.member.common.SnsProvider;
 import com.member.domain.Member;
 import com.member.dto.SnsUserInfoResponse;
+import com.member.exception.ErrorCode;
+import com.member.exception.MemberServiceApiException;
 import com.member.repository.MemberRepository;
 
 import lombok.RequiredArgsConstructor;
@@ -22,6 +24,11 @@ import lombok.extern.slf4j.Slf4j;
 public class MemberService {
 
 	private final MemberRepository memberRepository;
+
+	public Member findById(Long memberId) {
+		return memberRepository.findById(memberId)
+			.orElseThrow(() -> new MemberServiceApiException(ErrorCode.MEMBER_NOT_FOUND));
+	}
 
 	public Optional<Member> findBySocialId(SnsProvider snsProvider, String socialId) {
 		return memberRepository.findBySnsProviderAndSocialId(snsProvider, socialId);

@@ -86,6 +86,10 @@ public class JwtTokenProvider {
 		return jwtProperties.getAccessTokenExpiration() / 1000;
 	}
 
+	public Long getRefreshTokenExpiresIn() {
+		return jwtProperties.getRefreshTokenExpiration();
+	}
+
 	private Claims parseClaims(String token) {
 		try {
 			return Jwts.parser()

@@ -12,6 +12,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.member.dto.LoginRequest;
 import com.member.dto.LoginResponse;
+import com.member.dto.TokenRefreshRequest;
+import com.member.dto.TokenRefreshResponse;
 import com.member.service.AuthService;
 
 import jakarta.validation.Valid;
@@ -55,6 +57,15 @@ public class AuthController {
 		log.info("카카오 로그인 API 호출: code={}", request.getCode());
 
 		LoginResponse response = authService.login(request.getCode());
+
+		return ResponseEntity.ok(response);
+	}
+
+	@PostMapping("/refresh")
+	public ResponseEntity<TokenRefreshResponse> refreshToken(@Valid @RequestBody TokenRefreshRequest request) {
+		log.info("Access Token 재발급 요청");
+
+		TokenRefreshResponse response = authService.refreshAccessToken(request.getRefreshToken());
 
 		return ResponseEntity.ok(response);
 	}
