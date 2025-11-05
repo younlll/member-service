@@ -14,6 +14,11 @@ public enum ErrorCode {
 	INVALID_TYPE_VALUE(HttpStatus.BAD_REQUEST, "E40002", "타입이 올바르지 않습니다"),
 	MISSING_INPUT_VALUE(HttpStatus.BAD_REQUEST, "E40003", "필수 입력값이 누락되었습니다"),
 	INVALID_TOKEN_VALUE(HttpStatus.BAD_REQUEST, "E40004", "유효하지 않은 인가 코드입니다"),
+	ALREADY_ONBOARDED(HttpStatus.BAD_REQUEST, "E40005", "이미 회원가입이 완료된 회원입니다"),
+	TERMS_AGREEMENT_REQUIRED(HttpStatus.BAD_REQUEST, "E40006", "필수 약관에 동의해야 합니다"),
+	INVALID_INTEREST_COUNT(HttpStatus.BAD_REQUEST, "E40007", "관심사는 1개 이상 3개 이하로 선택해야 합니다"),
+	INTEREST_OPTION_REQUIRED(HttpStatus.BAD_REQUEST, "E40008", "관심사별 옵션은 최소 1개 이상 선택해야 합니다"),
+	INVALID_INTEREST_OPTION(HttpStatus.BAD_REQUEST, "E40009", "해당 관심사에 유효하지 않은 옵션입니다"),
 
 	// 404 Not Found
 	MEMBER_NOT_FOUND(HttpStatus.NOT_FOUND, "E40401", "회원을 찾을 수 없습니다"),
