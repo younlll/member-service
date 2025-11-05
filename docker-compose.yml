@@ -1,9 +1,7 @@
-version: '3.8'
-
 services:
   # Member Service (Spring Boot with Java 21)
   member-service:
-    build: 
+    build:
       context: .
       dockerfile: Dockerfile
       args:
@@ -25,7 +23,7 @@ services:
       - member-network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8081/api/actuator/health"]
+      test: [ "CMD", "curl", "-f", "http://localhost:8081/api/actuator/health" ]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -64,7 +62,7 @@ services:
       - member-network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-ppassword"]
+      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-ppassword" ]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -82,10 +80,40 @@ services:
           memory: 512M
           cpus: '0.5'
 
+  # Redis (Cache & Session Storage)
+  member-redis:
+    image: redis:7-alpine
+    container_name: member-redis
+    hostname: member-redis
+    ports:
+      - "6379:6379"
+    environment:
+      - TZ=Asia/Seoul
+    volumes:
+      - member_redis_data:/data
+    networks:
+      - member-network
+    restart: unless-stopped
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: '0.5'
+
 volumes:
   member_db_data:
     driver: local
     name: member_db_data
+  member_redis_data:
+    driver: local
+    name: member_redis_data
   member-logs:
     driver: local
     name: member_logs
