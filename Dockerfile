@@ -5,13 +5,13 @@ FROM eclipse-temurin:21-jdk-alpine AS builder
 WORKDIR /build
 
 # Gradle wrapper 파일들 먼저 복사 (캐시 최적화)
-COPY gradlwe .
+COPY gradlew .
 COPY gradle gradle
 COPY build.gradle .
 COPY settings.gradle .
 
 # 실행 권한 부여
-RUN chmode +x ./gradlew
+RUN chmod +x ./gradlew
 
 # 의존성 다운로드 (별도 레이어로 캐시 활용)
 RUN ./gradlew dependencies --no-daemon
@@ -49,15 +49,14 @@ EXPOSE 8081
 
 # 헬스체크 설정
 HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
-    CMD curl -f http://localhost:8081/actuato/health || exit 1
+    CMD curl -f http://localhost:8081/actuator/health || exit 1
 
 # JVM 최적화 옵션과 함께 애플리케이션 실행
 ENTRYPOINT ["java", \
     "-Djava.security.egd=file:/dev/./urandom", \
-    "-Dspring.profiles.active=dockeer", \
+    "-Dspring.profiles.active=docker", \
     "-Xms256m", \
-    "-Xms512m", \
-    "--enable-preview", \
+    "-Xmx512m", \
     "-XX:+UseZGC", \
     "-XX:+UseStringDeduplication", \
     "-XX:+OptimizeStringConcat", \
