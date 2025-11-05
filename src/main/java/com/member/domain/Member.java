@@ -65,7 +65,7 @@ public class Member {
 	@Enumerated(EnumType.STRING)
 	@Column(nullable = false, length = 20)
 	@Builder.Default
-	private MemberStatus status = MemberStatus.ACTIVE;
+	private MemberStatus status = MemberStatus.INACTIVE;
 
 	@CreatedDate
 	@Column(nullable = false, updatable = false)
@@ -77,4 +77,17 @@ public class Member {
 
 	@Column
 	private LocalDateTime lastLoginAt;
+
+	public void updateNickname(String nickname) {
+		this.nickname = nickname;
+	}
+
+	public void updateRegion(String regionProvince, String regionCity) {
+		this.regionProvince = regionProvince;
+		this.regionCity = regionCity;
+	}
+
+	public void updateMemberState(MemberStatus status) {
+		this.status = status;
+	}
 }
