@@ -27,6 +27,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 	protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
 		FilterChain filterChain) throws ServletException, IOException {
 
+		String requestPath = request.getRequestURI();
+
+		if (requestPath.startsWith("/actuator")) {
+			log.debug("Actuator 경로 필터링 건너뜀: {}", requestPath);
+			filterChain.doFilter(request, response);
+			return;
+		}
+
 		String token = extractTokenFromRequest(request);
 
 		log.debug("전달받은 토큰: [{}]", token);

@@ -3,10 +3,12 @@ package com.member.config;
 import java.util.Arrays;
 import java.util.List;
 
+import org.springframework.boot.autoconfigure.security.reactive.PathRequest;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.configuration.WebSecurityCustomizer;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
@@ -27,6 +29,14 @@ import lombok.extern.slf4j.Slf4j;
 public class SecurityConfig {
 
 	private final JwtAuthenticationFilter jwtAuthenticationFilter;
+
+	@Bean
+	public WebSecurityCustomizer webSecurityCustomizer() {
+		// ✅ 정적 리소스 완전 제외
+		return web -> web.ignoring()
+			.requestMatchers(String.valueOf(PathRequest.toStaticResources().atCommonLocations()))
+			.requestMatchers("/actuator/**");
+	}
 
 	@Bean
 	public SecurityFilterChain filterChain(HttpSecurity httpSecurity) throws Exception {
