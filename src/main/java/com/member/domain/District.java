@@ -29,13 +29,13 @@ public class District {
 	@Column(nullable = false, length = 10)
 	private String distCode1;
 
-	@Column(nullable = false, length = 50)
+	@Column(name = "dist_code1_name", nullable = false, length = 50)
 	private String distCode1Name;
 
 	@Column(nullable = false, length = 10)
 	private String distCode2;
 
-	@Column(nullable = false, length = 50)
+	@Column(name = "dist_code2_name", nullable = false, length = 50)
 	private String distCode2Name;
 
 	@CreatedDate
