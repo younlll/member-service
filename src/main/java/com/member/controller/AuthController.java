@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.member.dto.LoginRequest;
@@ -43,6 +44,44 @@ public class AuthController {
 		response.put("authUrl", authUrl);
 
 		return ResponseEntity.ok(response);
+	}
+
+	/**
+	 * GET /api/auth/kakao/callback
+	 */
+	@GetMapping("/kakao/callback")
+	public ResponseEntity<?> kakaoCallback(@RequestParam String code) {
+		log.info("카카오 콜백 수신: code={}", code);
+
+		LoginResponse loginResponse = authService.login(code);
+
+		return ResponseEntity.ok(loginResponse);
+
+		// try {
+		// 	LoginResponse loginResponse = authService.login(code);
+		//
+		// 	String frontendUrl = String.format(
+		// 		"http://localhost:3000/auth/callback?accessToken=%s&refreshToken=%s&isNewMember=%s&memberId=%s",
+		// 		loginResponse.getAccessToken(),
+		// 		loginResponse.getRefreshToken(),
+		// 		loginResponse.getIsNewMember(),
+		// 		loginResponse.getMemberId()
+		// 	);
+		//
+		// 	return ResponseEntity.status(HttpStatus.FOUND)
+		// 		.header("Location", frontendUrl)
+		// 		.build();
+		//
+		// } catch (Exception e) {
+		// 	log.error("카카오 로그인 콜백 처리 실패", e);
+		//
+		// 	String errorUrl = "http://localhost:3000/auth/error?message=" +
+		// 		java.net.URLEncoder.encode(e.getMessage(), StandardCharsets.UTF_8);
+		//
+		// 	return ResponseEntity.status(HttpStatus.FOUND)
+		// 		.header("Location", errorUrl)
+		// 		.build();
+		// }
 	}
 
 	/**
