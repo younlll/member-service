@@ -3,9 +3,11 @@ package com.member.domain;
 import java.time.LocalDateTime;
 
 import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EntityListeners;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
@@ -23,6 +25,7 @@ import lombok.NoArgsConstructor;
 @Entity
 @Table(name = "member_interest_options",
 	uniqueConstraints = @UniqueConstraint(columnNames = {"member_interest_id", "option_type"}))
+@EntityListeners(AuditingEntityListener.class)
 @Getter
 @NoArgsConstructor
 public class MemberInterestOption {
