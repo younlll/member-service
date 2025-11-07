@@ -1,5 +1,6 @@
 package com.member.exception;
 
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.BindException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
@@ -7,6 +8,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -66,6 +68,21 @@ public class GlobalExceptionHandler {
 		System.out.println("ErrorResponse message: " + response.getMessage());
 
 		return ResponseEntity.status(ErrorCode.INVALID_INPUT_VALUE.getStatus()).body(response);
+	}
+
+	@ExceptionHandler(NoResourceFoundException.class)
+	public ResponseEntity<ErrorResponse> handleNoResourceFoundException(NoResourceFoundException ex) {
+		String requestPath = ex.getResourcePath();
+		log.debug("요청 경로: {}", requestPath);
+
+		if (requestPath.startsWith("actuator")) {
+			log.info("Actuator 요청 무시: {}", requestPath);
+			return null;
+		}
+
+		log.error("NoResourceFoundException 발생: {}", requestPath);
+		ErrorResponse response = ErrorResponse.of(ErrorCode.INTERNAL_SERVER_ERROR);
+		return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
 	}
 
 	@ExceptionHandler(CommonException.class)
