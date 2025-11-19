@@ -1,4 +1,4 @@
-services:
+  services:x
   # Member Service (Spring Boot with Java 21)
   member-service:
     build:
@@ -107,21 +107,21 @@ services:
           memory: 256M
           cpus: '0.5'
 
-volumes:
-  member_db_data:
-    driver: local
-    name: member_db_data
-  member_redis_data:
-    driver: local
-    name: member_redis_data
-  member-logs:
-    driver: local
-    name: member_logs
+  volumes:
+    member_db_data:
+      driver: local
+      name: member_db_data
+    member_redis_data:
+      driver: local
+      name: member_redis_data
+    member-logs:
+      driver: local
+      name: member_logs
 
-networks:
-  member-network:
-    driver: bridge
-    name: member-network
-    ipam:
-      config:
-        - subnet: 172.20.0.0/16
+  networks:
+    member-network:
+      driver: bridge
+      name: member-network
+      ipam:
+        config:
+          - subnet: 172.20.0.0/16
