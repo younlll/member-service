@@ -45,11 +45,11 @@ RUN chown memberuser:membergroup app.jar
 USER memberuser
 
 # 컨테이너가 사용할 포트 노출
-EXPOSE 8081
+EXPOSE 8083
 
 # 헬스체크 설정
 HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
-    CMD curl -f http://localhost:8081/actuator/health || exit 1
+    CMD curl -f http://localhost:8083/actuator/health || exit 1
 
 # JVM 최적화 옵션과 함께 애플리케이션 실행
 ENTRYPOINT ["java", \
