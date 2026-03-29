@@ -38,7 +38,7 @@ public class Member {
 	private Long id;
 
 	@Enumerated(EnumType.STRING)
-	@Column(nullable = false, length = 20)
+	@Column(name = "social_provider", nullable = false, length = 20)
 	private SnsProvider snsProvider;
 
 	@Column(nullable = false, unique = true, length = 100)

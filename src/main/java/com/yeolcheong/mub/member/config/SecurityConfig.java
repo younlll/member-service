@@ -3,7 +3,7 @@ package com.yeolcheong.mub.member.config;
 import java.util.Arrays;
 import java.util.List;
 
-import org.springframework.boot.autoconfigure.security.reactive.PathRequest;
+import org.springframework.boot.autoconfigure.security.servlet.PathRequest;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -32,7 +32,6 @@ public class SecurityConfig {
 
 	@Bean
 	public WebSecurityCustomizer webSecurityCustomizer() {
-		// ✅ 정적 리소스 완전 제외
 		return web -> web.ignoring()
 			.requestMatchers(String.valueOf(PathRequest.toStaticResources().atCommonLocations()))
 			.requestMatchers("/actuator/**");

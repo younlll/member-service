@@ -71,18 +71,19 @@ public class GlobalExceptionHandler {
 	}
 
 	@ExceptionHandler(NoResourceFoundException.class)
-	public ResponseEntity<ErrorResponse> handleNoResourceFoundException(NoResourceFoundException ex) {
+	public ResponseEntity<ErrorResponse> handleNoResourceFoundException(NoResourceFoundException ex) throws
+		NoResourceFoundException {
 		String requestPath = ex.getResourcePath();
 		log.debug("요청 경로: {}", requestPath);
 
 		if (requestPath.startsWith("actuator")) {
 			log.info("Actuator 요청 무시: {}", requestPath);
-			return null;
+			throw ex;
 		}
 
 		log.error("NoResourceFoundException 발생: {}", requestPath);
 		ErrorResponse response = ErrorResponse.of(ErrorCode.INTERNAL_SERVER_ERROR);
-		return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+		return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
 	}
 
 	@ExceptionHandler(CommonException.class)
