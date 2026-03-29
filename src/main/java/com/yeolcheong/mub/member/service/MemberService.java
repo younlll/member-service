@@ -9,6 +9,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.yeolcheong.mub.member.common.MemberStatus;
 import com.yeolcheong.mub.member.common.SnsProvider;
 import com.yeolcheong.mub.member.domain.Member;
+import com.yeolcheong.mub.member.dto.MemberInfoResponse;
 import com.yeolcheong.mub.member.dto.SnsUserInfoResponse;
 import com.yeolcheong.mub.member.exception.ErrorCode;
 import com.yeolcheong.mub.member.exception.MemberServiceApiException;
@@ -49,5 +50,18 @@ public class MemberService {
 		log.info("신규 회원 생성 완료: memberId={}", saveMember.getId());
 
 		return saveMember;
+	}
+
+	public MemberInfoResponse getMemberByEmail(String email) {
+		log.info("이메일로 회원 조회: email={}", email);
+
+		Member member = memberRepository.findByEmail(email)
+			.orElseThrow(() -> {
+				log.warn("회원 조회 실패 - 존재하지 않는 이메일: email={}", email);
+				return new MemberServiceApiException("존재하지 않는 회원입니다.", ErrorCode.MEMBER_NOT_FOUND);
+			});
+
+		log.info("회원 조회 성공: memberId={}", member.getId());
+		return MemberInfoResponse.from(member);
 	}
 }

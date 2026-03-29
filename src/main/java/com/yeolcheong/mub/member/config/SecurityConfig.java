@@ -33,7 +33,7 @@ public class SecurityConfig {
 	@Bean
 	public WebSecurityCustomizer webSecurityCustomizer() {
 		return web -> web.ignoring()
-			.requestMatchers(String.valueOf(PathRequest.toStaticResources().atCommonLocations()))
+			.requestMatchers(PathRequest.toStaticResources().atCommonLocations())
 			.requestMatchers("/actuator/**");
 	}
 
@@ -43,12 +43,11 @@ public class SecurityConfig {
 			.cors(cors -> cors.configurationSource(corsConfigurationSource()))
 			.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 			.authorizeHttpRequests(auth -> auth
-				.requestMatchers("/actuator/**",
-					"/actuator/health",
-					"/actuator/info").permitAll()
-				.requestMatchers("/api/auth/**",
+				.requestMatchers(
+					"/api/auth/**",
 					"/api/districts/**",
-					"/api/interests").permitAll()
+					"/api/interests"
+				).permitAll()
 				.anyRequest().authenticated()
 			)
 			.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
