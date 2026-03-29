@@ -22,6 +22,12 @@ public class MemberInfoResponse {
 	private String regionCity;
 	private MemberStatus status;
 
+	/**
+	 * Create a MemberInfoResponse populated from the given Member.
+	 *
+	 * @param member the source Member whose fields will populate the response
+	 * @return a MemberInfoResponse with values copied from the provided member
+	 */
 	public static MemberInfoResponse from(Member member) {
 		return MemberInfoResponse.builder()
 			.memberId(member.getId())

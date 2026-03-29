@@ -30,6 +30,11 @@ public class SecurityConfig {
 
 	private final JwtAuthenticationFilter jwtAuthenticationFilter;
 
+	/**
+	 * Configure security to ignore requests for static resources at common locations and actuator endpoints.
+	 *
+	 * @return the WebSecurityCustomizer that excludes static resources and requests under `/actuator/**` from security filters
+	 */
 	@Bean
 	public WebSecurityCustomizer webSecurityCustomizer() {
 		return web -> web.ignoring()
@@ -37,6 +42,18 @@ public class SecurityConfig {
 			.requestMatchers("/actuator/**");
 	}
 
+	/**
+	 * Create the application's SecurityFilterChain configured for JWT-based authentication.
+	 *
+	 * Configures CSRF as disabled, enables CORS with the application's CorsConfigurationSource, uses
+	 * stateless session management, permits unauthenticated access to "/api/auth/**", "/api/districts/**",
+	 * and "/api/interests", requires authentication for other requests, and inserts the JWT authentication
+	 * filter before the UsernamePasswordAuthenticationFilter.
+	 *
+	 * @param httpSecurity the HttpSecurity to configure
+	 * @return the configured SecurityFilterChain
+	 * @throws Exception if an error occurs while building the security configuration
+	 */
 	@Bean
 	public SecurityFilterChain filterChain(HttpSecurity httpSecurity) throws Exception {
 		httpSecurity.csrf(AbstractHttpConfigurer::disable)

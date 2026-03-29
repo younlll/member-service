@@ -21,8 +21,10 @@ public class MemberController {
 	private final MemberService memberService;
 
 	/**
-	 * 이메일로 회원 정보 조회
-	 * GET /api/members?email=user@kakao.com
+	 * Retrieve member information by email.
+	 *
+	 * @param email the email address of the member to look up
+	 * @return a ResponseEntity containing the MemberInfoResponse for the specified email
 	 */
 	@GetMapping
 	public ResponseEntity<MemberInfoResponse> getMemberByEmail(

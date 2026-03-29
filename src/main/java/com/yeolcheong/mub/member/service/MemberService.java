@@ -35,6 +35,15 @@ public class MemberService {
 		return memberRepository.findBySnsProviderAndSocialId(snsProvider, socialId);
 	}
 
+	/**
+	 * Create and persist a new Member using information from an SNS user response.
+	 *
+	 * <p>The created Member will use the KAKAO provider, the SNS user's Kakao ID as the social ID,
+	 * the provided email, an INACTIVE status, and the current time as the last login time.</p>
+	 *
+	 * @param snsUserInfoResponse the SNS user information used to populate the new Member
+	 * @return the persisted Member with its generated identifier populated
+	 */
 	public Member createdFromSnsUser(SnsUserInfoResponse snsUserInfoResponse) {
 		log.info("신규 회원 생성: snsId={}, email={}", snsUserInfoResponse.getId(), snsUserInfoResponse.getEmail());
 
@@ -52,6 +61,13 @@ public class MemberService {
 		return saveMember;
 	}
 
+	/**
+	 * Retrieve member information by email.
+	 *
+	 * @param email the email address of the member to look up
+	 * @return a MemberInfoResponse representing the found member
+	 * @throws MemberServiceApiException if no member exists for the given email (ErrorCode.MEMBER_NOT_FOUND)
+	 */
 	public MemberInfoResponse getMemberByEmail(String email) {
 		log.info("이메일로 회원 조회: email={}", email);
 
