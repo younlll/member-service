@@ -12,4 +12,6 @@ import com.yeolcheong.mub.member.domain.Member;
 public interface MemberRepository extends JpaRepository<Member, Long> {
 
 	Optional<Member> findBySnsProviderAndSocialId(SnsProvider snsProvider, String socialId);
+
+	Optional<Member> findByEmail(String email);
 }
