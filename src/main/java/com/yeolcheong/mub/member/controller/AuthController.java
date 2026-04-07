@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.yeolcheong.mub.member.dto.KakaoTokenLoginRequest;
 import com.yeolcheong.mub.member.dto.LoginRequest;
 import com.yeolcheong.mub.member.dto.LoginResponse;
 import com.yeolcheong.mub.member.dto.TokenRefreshRequest;
@@ -106,6 +107,15 @@ public class AuthController {
 
 		TokenRefreshResponse response = authService.refreshAccessToken(request.getRefreshToken());
 
+		return ResponseEntity.ok(response);
+	}
+
+	@PostMapping("/auth/login/token")
+	public ResponseEntity<LoginResponse> loginWithKakaoToken(
+		@RequestBody KakaoTokenLoginRequest request) {
+		log.info("카카오 SDK 토큰으로 로그인 요청");
+
+		LoginResponse response = authService.loginWithKakaoToken(request.getAccessToken());
 		return ResponseEntity.ok(response);
 	}
 }

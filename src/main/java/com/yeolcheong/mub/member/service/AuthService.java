@@ -106,13 +106,22 @@ public class AuthService {
 
 		String newAccessToken = jwtTokenProvider.generateAccessToken(member.getId(), member.getSocialId(),
 			member.getSnsProvider().name());
+		String newRefreshToken = jwtTokenProvider.generateRefreshToken(member.getId());
+		saveRefreshToken(member.getId(), newRefreshToken);
 
 		log.info("Access Token 재발급 성공: memberId={}", memberId);
 
 		return TokenRefreshResponse.builder()
+			.memberId(String.valueOf(member.getId()))
+			.kakaoId(member.getSocialId())
+			.email(member.getEmail())
 			.tokenType("Bearer")
 			.accessToken(newAccessToken)
 			.expiresIn(jwtTokenProvider.getAccessTokenExpiresIn())
+			.refreshToken(newRefreshToken)
+			.refreshTokenExpiresIn(jwtTokenProvider.getRefreshTokenExpiresIn())
+			.connectedAt(null)
+			.isNewMember(false)
 			.build();
 	}
 
@@ -199,6 +208,65 @@ public class AuthService {
 		} catch (Exception e) {
 			log.error("카카오 토큰 발급 중 예외 발생", e);
 			throw new MemberServiceApiException("카카오 API 호출 중 오류가 발생했습니다", ErrorCode.EXTERNAL_API_ERROR);
+		}
+	}
+
+	@Transactional
+	public LoginResponse loginWithKakaoToken(String kakaoAccessToken) {
+		log.info("카카오 SDK 토큰 로그인 시작");
+
+		boolean isNewMember = false;
+
+		// 기존 getKakaoUserInfo()를 LoginTokenResponse 없이 직접 호출
+		SnsUserInfoResponse snsUserInfoResponse = getKakaoUserInfoByToken(kakaoAccessToken);
+
+		Optional<Member> existingMember = memberService.findBySocialId(
+			SnsProvider.KAKAO, snsUserInfoResponse.getKakaoIdAsString());
+
+		Member member;
+		if (existingMember.isEmpty()) {
+			isNewMember = true;
+			member = memberService.createdFromSnsUser(snsUserInfoResponse);
+			log.info("신규 회원 생성: memberId={}", member.getId());
+		} else {
+			member = existingMember.get();
+			log.info("기존 회원 로그인: memberId={}", member.getId());
+		}
+
+		String accessToken = jwtTokenProvider.generateAccessToken(
+			member.getId(), member.getSocialId(), member.getSnsProvider().name());
+		String refreshToken = jwtTokenProvider.generateRefreshToken(member.getId());
+
+		saveRefreshToken(member.getId(), refreshToken);  // 기존 메서드 재사용
+
+		return LoginResponse.of(accessToken, refreshToken,
+			jwtTokenProvider.getAccessTokenExpiresIn(),
+			snsUserInfoResponse, isNewMember, String.valueOf(member.getId()));
+	}
+
+	// 카카오 토큰을 직접 받아 사용자 정보 조회 (기존 getKakaoUserInfo와 분리)
+	private SnsUserInfoResponse getKakaoUserInfoByToken(String kakaoAccessToken) {
+		try {
+			SnsUserInfoResponse response = webClient.get()
+				.uri(kakaoProperties.getUserInfoUrl())
+				.header(HttpHeaders.AUTHORIZATION, "Bearer " + kakaoAccessToken)
+				.retrieve()
+				.bodyToMono(SnsUserInfoResponse.class)
+				.block();
+
+			if (response == null) {
+				throw new MemberServiceApiException("카카오 사용자 정보 응답이 없습니다.");
+			}
+
+			log.info("카카오 사용자 정보 조회 성공: kakaoId={}", response.getId());
+			return response;
+
+		} catch (WebClientResponseException e) {
+			log.error("카카오 사용자 정보 조회 실패: status={}", e.getStatusCode());
+			if (e.getStatusCode().value() == 401) {
+				throw new MemberServiceApiException("유효하지 않은 카카오 토큰입니다", ErrorCode.INVALID_TOKEN);
+			}
+			throw new MemberServiceApiException("카카오 사용자 정보 조회 실패", ErrorCode.EXTERNAL_API_ERROR);
 		}
 	}
 }
