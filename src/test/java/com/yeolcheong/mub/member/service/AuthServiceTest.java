@@ -1,6 +1,7 @@
 package com.yeolcheong.mub.member.service;
 
 import static org.assertj.core.api.Assertions.*;
+import static org.assertj.core.api.SoftAssertions.*;
 import static org.mockito.BDDMockito.*;
 
 import java.time.LocalDateTime;
@@ -8,8 +9,11 @@ import java.util.Optional;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -36,288 +40,529 @@ import reactor.core.publisher.Mono;
 
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
-@DisplayName("AuthService 단위 테스트")
+@DisplayName("AuthService")
 class AuthServiceTest {
 
-	@Mock
-	private KakaoProperties kakaoProperties;
-
-	@Mock
-	private WebClient webClient;
-
-	@Mock
-	private WebClient.RequestBodyUriSpec requestBodyUriSpec;
-
-	@Mock
-	private WebClient.RequestBodySpec requestBodySpec;
-
-	@Mock
-	private WebClient.RequestHeadersSpec<?> requestHeadersSpec;
-
-	@Mock
-	private WebClient.RequestHeadersUriSpec<?> requestHeadersUriSpec;
-
-	@Mock
-	private WebClient.ResponseSpec responseSpec;
-
-	@Mock
-	private MemberService memberService;
-
-	@Mock
-	private JwtTokenProvider jwtTokenProvider;
-
-	@Mock
-	private RefreshTokenRepository refreshTokenRepository;
-
-	@InjectMocks
-	private AuthService authService;
-
-	private Member testMember;
-
 	private static final Long TEST_MEMBER_ID = 1L;
-	private static final String TEST_KAKAO_ID = "1212343456";
-	private static final String TEST_KAKAO_EMAIL = "kakaoLoginTest@example.com";
+	private static final String TEST_SOCIAL_ID = "1212343456";
+	private static final String TEST_EMAIL = "kakaoLoginTest@example.com";
 	private static final String TEST_ACCESS_TOKEN = "jwt-access-token";
 	private static final String TEST_REFRESH_TOKEN = "jwt-refresh-token";
+	@Mock
+	private KakaoProperties kakaoProperties;
+	@Mock
+	private WebClient webClient;
+	@Mock
+	private WebClient.RequestBodyUriSpec requestBodyUriSpec;
+	@Mock
+	private WebClient.RequestBodySpec requestBodySpec;
+	@Mock
+	private WebClient.RequestHeadersSpec<?> requestHeadersSpec;
+	@Mock
+	private WebClient.RequestHeadersUriSpec<?> requestHeadersUriSpec;
+	@Mock
+	private WebClient.ResponseSpec responseSpec;
+	@Mock
+	private MemberService memberService;
+	@Mock
+	private JwtTokenProvider jwtTokenProvider;
+	@Mock
+	private RefreshTokenRepository refreshTokenRepository;
+	@InjectMocks
+	private AuthService authService;
+	private Member activeMember;
+	private Member inactiveMember;
 
 	@BeforeEach
 	void setUp() {
-		given(kakaoProperties.getAuthUrl()).willReturn("https://kauth.kakao.com/oauth/authorize/");
+		given(kakaoProperties.getAuthUrl()).willReturn("https://kauth.kakao.com/oauth/authorize");
 		given(kakaoProperties.getClientId()).willReturn("test-client-id");
-		given(kakaoProperties.getRedirectUri()).willReturn("http://localhost:8081/api/auth/kakao/callback");
+		given(kakaoProperties.getRedirectUri()).willReturn("http://localhost:8083/api/auth/kakao/callback");
 		given(kakaoProperties.getTokenUrl()).willReturn("https://kauth.kakao.com/oauth/token");
 		given(kakaoProperties.getUserInfoUrl()).willReturn("https://kapi.kakao.com/v2/user/me");
 
-		testMember = Member.builder()
-			.id(1L)
-			.snsProvider(SnsProvider.KAKAO)
-			.socialId("1234567890")
-			.email("test@example.com")
-			.status(MemberStatus.ACTIVE)
-			.build();
-	}
-
-	@Test
-	@DisplayName("카카오 인가를 위한 URL을 정확하게 생성하여 리턴한다")
-	void shouldGenerateCorrectAuthUrl() {
-		// when
-		String authUrl = authService.getAuthUrl();
-
-		System.out.println("authUrl=" + authUrl);
-
-		// then
-		assertThat(authUrl).isNotNull();
-		assertThat(authUrl).contains("https://kauth.kakao.com/oauth/authorize");
-		assertThat(authUrl).contains("client_id=test-client-id");
-		assertThat(authUrl).contains("http://localhost:8081/api/auth/kakao/callback");
-		assertThat(authUrl).contains("response_type=code");
-	}
-
-	@Test
-	@DisplayName("생성된 URL이 필수 파라미터를 모두 포함한다")
-	void shouldContainAllRequiredParameters() {
-		// when
-		String authUrl = authService.getAuthUrl();
-
-		// then
-		assertThat(authUrl)
-			.contains("client_id=")
-			.contains("redirect_uri=")
-			.contains("response_type=code");
-	}
-
-	@Test
-	@DisplayName("신규 회원 로그인 시, 소셜로그인 정보를 바탕으로 회원과 토큰을 정상 생성한다")
-	void shouldNewMemberLoginSuccessfully() {
-		// given
-		String authorizationCode = "test-authorization-code";
-
-		LoginTokenResponse loginTokenMockResponse = createTokenMockResponse();
-		SnsUserInfoResponse kakaoUserInfoMockResponse = createKakaoUserInfoMockResponse();
-
-		Member newMember = Member.builder()
+		activeMember = Member.builder()
 			.id(TEST_MEMBER_ID)
 			.snsProvider(SnsProvider.KAKAO)
-			.socialId(TEST_KAKAO_ID)
-			.email(TEST_KAKAO_EMAIL)
-			.status(MemberStatus.INACTIVE)
+			.socialId(TEST_SOCIAL_ID)
+			.email(TEST_EMAIL)
+			.status(MemberStatus.ACTIVE)
 			.lastLoginAt(LocalDateTime.now())
 			.build();
 
-		given(memberService.findBySocialId(SnsProvider.KAKAO, TEST_KAKAO_ID)).willReturn(java.util.Optional.empty());
-		given(memberService.createdFromSnsUser(any(SnsUserInfoResponse.class))).willReturn(newMember);
-
-		given(jwtTokenProvider.generateAccessToken(anyLong(), anyString(), anyString())).willReturn(
-			TEST_ACCESS_TOKEN);
-		given(jwtTokenProvider.generateRefreshToken(anyLong())).willReturn(TEST_REFRESH_TOKEN);
-		given(jwtTokenProvider.getAccessTokenExpiresIn()).willReturn(86400L);
-
-		setupWebClientMocks(loginTokenMockResponse, kakaoUserInfoMockResponse);
-
-		LoginResponse response = authService.login(authorizationCode);
-
-		assertThat(response).isNotNull();
-		assertThat(response.getTokenType()).isEqualTo("Bearer");
-		assertThat(response.getAccessToken()).isEqualTo(TEST_ACCESS_TOKEN);
-		assertThat(response.getExpiresIn()).isEqualTo(86400L);
-		assertThat(response.getRefreshToken()).isEqualTo(TEST_REFRESH_TOKEN);
-
-		assertThat(response.getKakaoId()).isEqualTo(TEST_KAKAO_ID);
-		assertThat(response.getEmail()).isEqualTo(TEST_KAKAO_EMAIL);
-		assertThat(response.getConnectedAt()).isNotNull();
-
-		assertThat(response.getIsNewMember()).isTrue();
-
-		verify(memberService).createdFromSnsUser(any(SnsUserInfoResponse.class));
+		inactiveMember = Member.builder()
+			.id(2L)
+			.snsProvider(SnsProvider.KAKAO)
+			.socialId(TEST_SOCIAL_ID)
+			.email(null)
+			.status(MemberStatus.INACTIVE)
+			.lastLoginAt(LocalDateTime.now())
+			.build();
 	}
 
-	@Test
-	@DisplayName("카카오 토큰 발급 실패 시 예외를 던진다")
-	void shouldThrowExceptionWhenSocialTokenFails() {
-		// given
-		String authorizationCode = "invalid-code";
-
+	@SuppressWarnings("unchecked")
+	private void setupTokenWebClientMock(Mono<LoginTokenResponse> mono) {
 		given(webClient.post()).willReturn(requestBodyUriSpec);
 		given(requestBodyUriSpec.uri(anyString())).willReturn(requestBodySpec);
 		given(requestBodySpec.contentType(any())).willReturn(requestBodySpec);
-		given(requestBodySpec.bodyValue(any())).willAnswer(invocation -> requestHeadersSpec);
+		given(requestBodySpec.bodyValue(any())).willAnswer(inv -> requestHeadersSpec);
 		given(requestHeadersSpec.retrieve()).willReturn(responseSpec);
-		given(responseSpec.bodyToMono(LoginTokenResponse.class))
-			.willReturn(Mono.error(WebClientResponseException.create(
-				HttpStatus.BAD_REQUEST.value(),
-				"Bad Request",
-				null,
-				"{\"error\":\"invalid_grant\"}".getBytes(),
-				null
-			)));
-
-		// when & then
-		assertThatThrownBy(() -> authService.login(authorizationCode))
-			.isInstanceOf(MemberServiceApiException.class)
-			.hasMessageContaining(ErrorCode.INVALID_TOKEN_VALUE.getMessage());
+		given(responseSpec.bodyToMono(LoginTokenResponse.class)).willReturn(mono);
 	}
 
-	@Test
-	@DisplayName("카카오 사용자 정보 조회 실패 시 예외를 던진다")
-	void shouldThrowExceptionWhenUserInfoFails() {
-		// given
-		String authorizationCode = "test-code";
-		LoginTokenResponse loginTokenResponse = createTokenMockResponse();
-
-		given(webClient.post()).willReturn(requestBodyUriSpec);
-		given(requestBodyUriSpec.uri(anyString())).willReturn(requestBodySpec);
-		given(requestBodySpec.contentType(any())).willReturn(requestBodySpec);
-		given(requestBodySpec.bodyValue(any())).willAnswer(invocation -> requestHeadersSpec);
-		given(requestHeadersSpec.retrieve()).willReturn(responseSpec);
-		given(responseSpec.bodyToMono(LoginTokenResponse.class))
-			.willReturn(Mono.just(loginTokenResponse));
-
-		given(webClient.get()).willAnswer(invocation -> requestHeadersUriSpec);
-		given(requestHeadersUriSpec.uri(anyString())).willAnswer(invocation -> requestHeadersUriSpec);
-		given(requestHeadersUriSpec.header(anyString(), anyString())).willAnswer(invocation -> requestHeadersUriSpec);
+	@SuppressWarnings("unchecked")
+	private void setupUserInfoWebClientMock(Mono<SnsUserInfoResponse> mono) {
+		given(webClient.get()).willAnswer(inv -> requestHeadersUriSpec);
+		given(requestHeadersUriSpec.uri(anyString())).willAnswer(inv -> requestHeadersUriSpec);
+		given(requestHeadersUriSpec.header(anyString(), anyString())).willAnswer(inv -> requestHeadersUriSpec);
 		given(requestHeadersUriSpec.retrieve()).willReturn(responseSpec);
-		given(responseSpec.bodyToMono(SnsUserInfoResponse.class))
-			.willReturn(Mono.error(WebClientResponseException.create(
-				HttpStatus.UNAUTHORIZED.value(),
-				"Unauthorized",
-				null,
-				null,
-				null
-			)));
-
-		// when & then
-		assertThatThrownBy(() -> authService.login(authorizationCode))
-			.isInstanceOf(MemberServiceApiException.class)
-			.hasMessageContaining("유효하지 않은 카카오 토큰입니다");
+		given(responseSpec.bodyToMono(SnsUserInfoResponse.class)).willReturn(mono);
 	}
 
-	@Test
-	@DisplayName("유효한 Refresh Token으로 Access Token 재발급 성공")
-	void shouldRefreshAccessTokenSuccessfully() {
-		// given
-		given(jwtTokenProvider.validateToken(TEST_REFRESH_TOKEN)).willReturn(true);
-		given(jwtTokenProvider.getMemberIdFromToken(TEST_REFRESH_TOKEN)).willReturn(1L);
-		given(refreshTokenRepository.findByMemberId(1L)).willReturn(Optional.of(TEST_REFRESH_TOKEN));
-		given(memberService.findById(1L)).willReturn(testMember);
-		given(jwtTokenProvider.generateAccessToken(1L, "1234567890", "KAKAO"))
-			.willReturn("new-access-token");
-		given(jwtTokenProvider.getAccessTokenExpiresIn()).willReturn(86400L);
-
-		// when
-		TokenRefreshResponse response = authService.refreshAccessToken(TEST_REFRESH_TOKEN);
-
-		// then
-		assertThat(response).isNotNull();
-		assertThat(response.getTokenType()).isEqualTo("Bearer");
-		assertThat(response.getAccessToken()).isEqualTo("new-access-token");
-		assertThat(response.getExpiresIn()).isEqualTo(86400L);
+	private WebClientResponseException makeWebClientException(HttpStatus status) {
+		return WebClientResponseException.create(
+			status.value(), status.getReasonPhrase(), null,
+			("{\"error\":\"" + status.name() + "\"}").getBytes(), null
+		);
 	}
 
-	@Test
-	@DisplayName("유효하지 않은 Refresh Token으로 재발급 실패")
-	void shouldFailToRefreshWithInvalidToken() {
-		// given
-		String invalidToken = "invalid-token";
-		given(jwtTokenProvider.validateToken(invalidToken)).willReturn(false);
+	// =========================================================
+	// Helper
+	// =========================================================
 
-		// when & then
-		assertThatThrownBy(() -> authService.refreshAccessToken(invalidToken))
-			.isInstanceOf(MemberServiceApiException.class)
-			.hasMessageContaining("유효하지 않은 Refresh Token입니다");
-	}
-
-	@Test
-	@DisplayName("Redis에 저장된 토큰과 불일치하면 재발급 실패")
-	void shouldFailToRefreshWithMismatchedToken() {
-		// given
-		given(jwtTokenProvider.validateToken(TEST_REFRESH_TOKEN)).willReturn(true);
-		given(jwtTokenProvider.getMemberIdFromToken(TEST_REFRESH_TOKEN)).willReturn(1L);
-		given(refreshTokenRepository.findByMemberId(1L)).willReturn(Optional.of("different-token"));
-
-		// when & then
-		assertThatThrownBy(() -> authService.refreshAccessToken(TEST_REFRESH_TOKEN))
-			.isInstanceOf(MemberServiceApiException.class)
-			.hasMessageContaining("유효하지 않은 Refresh Token입니다");
-	}
-
-	private void setupWebClientMocks(LoginTokenResponse loginTokenMockResponse,
-		SnsUserInfoResponse kakaoUserInfoMockResponse) {
-
-		given(webClient.post()).willReturn(requestBodyUriSpec);
-		given(requestBodyUriSpec.uri(anyString())).willReturn(requestBodySpec);
-		given(requestBodySpec.contentType(any())).willReturn(requestBodySpec);
-		given(requestBodySpec.bodyValue(any())).willAnswer(invocation -> requestHeadersSpec);
-		given(requestHeadersSpec.retrieve()).willReturn(responseSpec);
-		given(responseSpec.bodyToMono(LoginTokenResponse.class))
-			.willReturn(Mono.just(loginTokenMockResponse));
-
-		given(webClient.get()).willAnswer(invocation -> requestHeadersUriSpec);
-		given(requestHeadersUriSpec.uri(anyString())).willAnswer(invocation -> requestHeadersUriSpec);
-		given(requestHeadersUriSpec.header(anyString(), anyString())).willAnswer(invocation -> requestHeadersUriSpec);
-		given(requestHeadersUriSpec.retrieve()).willReturn(responseSpec);
-		given(responseSpec.bodyToMono(SnsUserInfoResponse.class))
-			.willReturn(Mono.just(kakaoUserInfoMockResponse));
-	}
-
-	private LoginTokenResponse createTokenMockResponse() {
+	private LoginTokenResponse createTokenResponse() {
 		return LoginTokenResponse.builder()
 			.tokenType("Bearer")
-			.accessToken("test-access-token")
+			.accessToken("kakao-access-token")
 			.expiresIn(21599)
-			.refreshToken("test-refresh-token")
+			.refreshToken("kakao-refresh-token")
 			.refreshTokenExpiresIn(5183999)
 			.build();
 	}
 
-	private SnsUserInfoResponse createKakaoUserInfoMockResponse() {
-		SnsUserInfoResponse.KakaoAccount kakaoAccount = SnsUserInfoResponse.KakaoAccount.builder()
-			.email("kakaoLoginTest@example.com")
-			.build();
-
+	private SnsUserInfoResponse createKakaoUserInfo(String socialId, String email) {
 		return SnsUserInfoResponse.builder()
-			.id(1212343456L)
+			.id(Long.parseLong(socialId))
 			.connectedAt("2025-10-11T09:00:00Z")
-			.kakaoAccount(kakaoAccount)
+			.kakaoAccount(SnsUserInfoResponse.KakaoAccount.builder().email(email).build())
 			.build();
+	}
+
+	// =========================================================
+	// getAuthUrl
+	// =========================================================
+	@Nested
+	@DisplayName("getAuthUrl")
+	class GetAuthUrl {
+
+		@Test
+		@DisplayName("should return url containing all required oauth parameters")
+		void shouldReturnUrlContainingAllRequiredOauthParameters() {
+			// when
+			String authUrl = authService.getAuthUrl();
+
+			// then
+			assertSoftly(softly -> {
+				softly.assertThat(authUrl).contains("https://kauth.kakao.com/oauth/authorize");
+				softly.assertThat(authUrl).contains("client_id=test-client-id");
+				softly.assertThat(authUrl).contains("redirect_uri=http://localhost:8083/api/auth/kakao/callback");
+				softly.assertThat(authUrl).contains("response_type=code");
+			});
+		}
+
+		@Test
+		@DisplayName("should return url starting with kakao auth base url")
+		void shouldReturnUrlStartingWithKakaoAuthBaseUrl() {
+			// when
+			String authUrl = authService.getAuthUrl();
+
+			// then
+			assertThat(authUrl).startsWith("https://kauth.kakao.com/oauth/authorize");
+		}
+
+		@Test
+		@DisplayName("should reflect dynamic clientId in auth url")
+		void shouldReflectDynamicClientIdInAuthUrl() {
+			// given
+			given(kakaoProperties.getClientId()).willReturn("another-client-id");
+
+			// when
+			String authUrl = authService.getAuthUrl();
+
+			// then
+			assertThat(authUrl).contains("client_id=another-client-id");
+		}
+	}
+
+	// =========================================================
+	// login
+	// =========================================================
+	@Nested
+	@DisplayName("login")
+	class Login {
+
+		@Test
+		@DisplayName("should create new member and return isNewMember=true on first login")
+		void shouldCreateNewMemberAndReturnIsNewMemberTrueOnFirstLogin() {
+			// given
+			setupTokenWebClientMock(Mono.just(createTokenResponse()));
+			setupUserInfoWebClientMock(Mono.just(createKakaoUserInfo(TEST_SOCIAL_ID, TEST_EMAIL)));
+
+			given(memberService.findBySocialId(SnsProvider.KAKAO, TEST_SOCIAL_ID)).willReturn(Optional.empty());
+			given(memberService.createdFromSnsUser(any())).willReturn(inactiveMember);
+			given(jwtTokenProvider.generateAccessToken(anyLong(), anyString(), anyString())).willReturn(
+				TEST_ACCESS_TOKEN);
+			given(jwtTokenProvider.generateRefreshToken(anyLong())).willReturn(TEST_REFRESH_TOKEN);
+			given(jwtTokenProvider.getAccessTokenExpiresIn()).willReturn(86400L);
+
+			// when
+			LoginResponse response = authService.login("auth-code");
+
+			// then
+			assertSoftly(softly -> {
+				softly.assertThat(response.getIsNewMember()).isTrue();
+				softly.assertThat(response.getAccessToken()).isEqualTo(TEST_ACCESS_TOKEN);
+				softly.assertThat(response.getRefreshToken()).isEqualTo(TEST_REFRESH_TOKEN);
+				softly.assertThat(response.getTokenType()).isEqualTo("Bearer");
+				softly.assertThat(response.getExpiresIn()).isEqualTo(86400L);
+			});
+			verify(memberService, times(1)).createdFromSnsUser(any());
+		}
+
+		@Test
+		@DisplayName("should skip member creation and return isNewMember=false on existing member login")
+		void shouldSkipMemberCreationAndReturnIsNewMemberFalseOnExistingMemberLogin() {
+			// given
+			setupTokenWebClientMock(Mono.just(createTokenResponse()));
+			setupUserInfoWebClientMock(Mono.just(createKakaoUserInfo(TEST_SOCIAL_ID, TEST_EMAIL)));
+
+			given(memberService.findBySocialId(SnsProvider.KAKAO, TEST_SOCIAL_ID)).willReturn(
+				Optional.of(activeMember));
+			given(jwtTokenProvider.generateAccessToken(anyLong(), anyString(), anyString())).willReturn(
+				TEST_ACCESS_TOKEN);
+			given(jwtTokenProvider.generateRefreshToken(anyLong())).willReturn(TEST_REFRESH_TOKEN);
+			given(jwtTokenProvider.getAccessTokenExpiresIn()).willReturn(86400L);
+
+			// when
+			LoginResponse response = authService.login("auth-code");
+
+			// then
+			assertThat(response.getIsNewMember()).isFalse();
+			verify(memberService, never()).createdFromSnsUser(any());
+		}
+
+		@Test
+		@DisplayName("should save refresh token to redis on login")
+		void shouldSaveRefreshTokenToRedisOnLogin() {
+			// given
+			setupTokenWebClientMock(Mono.just(createTokenResponse()));
+			setupUserInfoWebClientMock(Mono.just(createKakaoUserInfo(TEST_SOCIAL_ID, TEST_EMAIL)));
+
+			given(memberService.findBySocialId(SnsProvider.KAKAO, TEST_SOCIAL_ID)).willReturn(
+				Optional.of(activeMember));
+			given(jwtTokenProvider.generateAccessToken(anyLong(), anyString(), anyString())).willReturn(
+				TEST_ACCESS_TOKEN);
+			given(jwtTokenProvider.generateRefreshToken(anyLong())).willReturn(TEST_REFRESH_TOKEN);
+			given(jwtTokenProvider.getAccessTokenExpiresIn()).willReturn(86400L);
+			given(jwtTokenProvider.getRefreshTokenExpiresIn()).willReturn(1209600000L);
+
+			// when
+			authService.login("auth-code");
+
+			// then
+			verify(refreshTokenRepository, times(1)).save(any(), anyLong());
+		}
+
+		@Test
+		@DisplayName("should include kakao user info in login response")
+		void shouldIncludeKakaoUserInfoInLoginResponse() {
+			// given
+			setupTokenWebClientMock(Mono.just(createTokenResponse()));
+			setupUserInfoWebClientMock(Mono.just(createKakaoUserInfo(TEST_SOCIAL_ID, TEST_EMAIL)));
+
+			given(memberService.findBySocialId(SnsProvider.KAKAO, TEST_SOCIAL_ID)).willReturn(
+				Optional.of(activeMember));
+			given(jwtTokenProvider.generateAccessToken(anyLong(), anyString(), anyString())).willReturn(
+				TEST_ACCESS_TOKEN);
+			given(jwtTokenProvider.generateRefreshToken(anyLong())).willReturn(TEST_REFRESH_TOKEN);
+			given(jwtTokenProvider.getAccessTokenExpiresIn()).willReturn(86400L);
+
+			// when
+			LoginResponse response = authService.login("auth-code");
+
+			// then
+			assertSoftly(softly -> {
+				softly.assertThat(response.getKakaoId()).isEqualTo(TEST_SOCIAL_ID);
+				softly.assertThat(response.getEmail()).isEqualTo(TEST_EMAIL);
+				softly.assertThat(response.getConnectedAt()).isNotNull();
+			});
+		}
+
+		@Test
+		@DisplayName("should create member without email when kakao account has no email")
+		void shouldCreateMemberWithoutEmailWhenKakaoAccountHasNoEmail() {
+			// given
+			setupTokenWebClientMock(Mono.just(createTokenResponse()));
+			setupUserInfoWebClientMock(Mono.just(createKakaoUserInfo(TEST_SOCIAL_ID, null)));
+
+			given(memberService.findBySocialId(SnsProvider.KAKAO, TEST_SOCIAL_ID)).willReturn(Optional.empty());
+			given(memberService.createdFromSnsUser(any())).willReturn(inactiveMember);
+			given(jwtTokenProvider.generateAccessToken(anyLong(), anyString(), anyString())).willReturn(
+				TEST_ACCESS_TOKEN);
+			given(jwtTokenProvider.generateRefreshToken(anyLong())).willReturn(TEST_REFRESH_TOKEN);
+			given(jwtTokenProvider.getAccessTokenExpiresIn()).willReturn(86400L);
+
+			// when
+			LoginResponse response = authService.login("auth-code");
+
+			// then
+			assertThat(response.getIsNewMember()).isTrue();
+			verify(memberService, times(1)).createdFromSnsUser(any());
+		}
+
+		// --- getAccessToken 내부 분기 ---
+
+		@ParameterizedTest(name = "should throw INVALID_TOKEN_VALUE when kakao token api returns 400 for code=\"{0}\"")
+		@DisplayName("should throw INVALID_TOKEN_VALUE when kakao token api returns 400")
+		@ValueSource(strings = {"expired-code", "already-used-code", ""})
+		void shouldThrowInvalidTokenValueWhenKakaoTokenApiReturns400(String invalidCode) {
+			// given
+			setupTokenWebClientMock(Mono.error(makeWebClientException(HttpStatus.BAD_REQUEST)));
+
+			// when & then
+			assertThatThrownBy(() -> authService.login(invalidCode))
+				.isInstanceOf(MemberServiceApiException.class)
+				.satisfies(ex -> assertThat(((MemberServiceApiException)ex).getErrorCode())
+					.isEqualTo(ErrorCode.INVALID_TOKEN_VALUE));
+		}
+
+		@Test
+		@DisplayName("should throw INVALID_TOKEN when kakao token api returns 401")
+		void shouldThrowInvalidTokenWhenKakaoTokenApiReturns401() {
+			// given
+			setupTokenWebClientMock(Mono.error(makeWebClientException(HttpStatus.UNAUTHORIZED)));
+
+			// when & then
+			assertThatThrownBy(() -> authService.login("any-code"))
+				.isInstanceOf(MemberServiceApiException.class)
+				.satisfies(ex -> assertThat(((MemberServiceApiException)ex).getErrorCode())
+					.isEqualTo(ErrorCode.INVALID_TOKEN));
+		}
+
+		@Test
+		@DisplayName("should throw EXTERNAL_API_ERROR when kakao token api returns 500")
+		void shouldThrowExternalApiErrorWhenKakaoTokenApiReturns500() {
+			// given
+			setupTokenWebClientMock(Mono.error(makeWebClientException(HttpStatus.INTERNAL_SERVER_ERROR)));
+
+			// when & then
+			assertThatThrownBy(() -> authService.login("any-code"))
+				.isInstanceOf(MemberServiceApiException.class)
+				.satisfies(ex -> assertThat(((MemberServiceApiException)ex).getErrorCode())
+					.isEqualTo(ErrorCode.EXTERNAL_API_ERROR));
+		}
+
+		@Test
+		@DisplayName("should throw EXTERNAL_API_ERROR when kakao token response is null")
+		void shouldThrowExternalApiErrorWhenKakaoTokenResponseIsNull() {
+			// given
+			setupTokenWebClientMock(Mono.justOrEmpty(null));
+
+			// when & then
+			assertThatThrownBy(() -> authService.login("any-code"))
+				.isInstanceOf(MemberServiceApiException.class)
+				.satisfies(ex -> assertThat(((MemberServiceApiException)ex).getErrorCode())
+					.isEqualTo(ErrorCode.EXTERNAL_API_ERROR));
+		}
+
+		@Test
+		@DisplayName("should throw EXTERNAL_API_ERROR when unexpected exception occurs during token request")
+		void shouldThrowExternalApiErrorWhenUnexpectedExceptionOccursDuringTokenRequest() {
+			// given
+			setupTokenWebClientMock(Mono.error(new RuntimeException("네트워크 오류")));
+
+			// when & then
+			assertThatThrownBy(() -> authService.login("any-code"))
+				.isInstanceOf(MemberServiceApiException.class)
+				.satisfies(ex -> assertThat(((MemberServiceApiException)ex).getErrorCode())
+					.isEqualTo(ErrorCode.EXTERNAL_API_ERROR));
+		}
+
+		// --- getKakaoUserInfo 내부 분기 ---
+
+		@Test
+		@DisplayName("should throw INVALID_TOKEN when kakao user-info api returns 401")
+		void shouldThrowInvalidTokenWhenKakaoUserInfoApiReturns401() {
+			// given
+			setupTokenWebClientMock(Mono.just(createTokenResponse()));
+			setupUserInfoWebClientMock(Mono.error(makeWebClientException(HttpStatus.UNAUTHORIZED)));
+
+			// when & then
+			assertThatThrownBy(() -> authService.login("any-code"))
+				.isInstanceOf(MemberServiceApiException.class)
+				.satisfies(ex -> assertThat(((MemberServiceApiException)ex).getErrorCode())
+					.isEqualTo(ErrorCode.INVALID_TOKEN));
+		}
+
+		@Test
+		@DisplayName("should throw EXTERNAL_API_ERROR when kakao user-info api returns 500")
+		void shouldThrowExternalApiErrorWhenKakaoUserInfoApiReturns500() {
+			// given
+			setupTokenWebClientMock(Mono.just(createTokenResponse()));
+			setupUserInfoWebClientMock(Mono.error(makeWebClientException(HttpStatus.INTERNAL_SERVER_ERROR)));
+
+			// when & then
+			assertThatThrownBy(() -> authService.login("any-code"))
+				.isInstanceOf(MemberServiceApiException.class)
+				.satisfies(ex -> assertThat(((MemberServiceApiException)ex).getErrorCode())
+					.isEqualTo(ErrorCode.EXTERNAL_API_ERROR));
+		}
+
+		@Test
+		@DisplayName("should throw EXTERNAL_API_ERROR when kakao user-info response is null")
+		void shouldThrowExternalApiErrorWhenKakaoUserInfoResponseIsNull() {
+			// given
+			setupTokenWebClientMock(Mono.just(createTokenResponse()));
+			setupUserInfoWebClientMock(Mono.justOrEmpty(null));
+
+			// when & then
+			assertThatThrownBy(() -> authService.login("any-code"))
+				.isInstanceOf(MemberServiceApiException.class)
+				.satisfies(ex -> assertThat(((MemberServiceApiException)ex).getErrorCode())
+					.isEqualTo(ErrorCode.EXTERNAL_API_ERROR));
+		}
+
+		@Test
+		@DisplayName("should throw EXTERNAL_API_ERROR when unexpected exception occurs during user-info request")
+		void shouldThrowExternalApiErrorWhenUnexpectedExceptionOccursDuringUserInfoRequest() {
+			// given
+			setupTokenWebClientMock(Mono.just(createTokenResponse()));
+			setupUserInfoWebClientMock(Mono.error(new RuntimeException("타임아웃")));
+
+			// when & then
+			assertThatThrownBy(() -> authService.login("any-code"))
+				.isInstanceOf(MemberServiceApiException.class)
+				.satisfies(ex -> assertThat(((MemberServiceApiException)ex).getErrorCode())
+					.isEqualTo(ErrorCode.EXTERNAL_API_ERROR));
+		}
+	}
+
+	// =========================================================
+	// refreshAccessToken
+	// =========================================================
+	@Nested
+	@DisplayName("refreshAccessToken")
+	class RefreshAccessToken {
+
+		@Test
+		@DisplayName("should return new access token when refresh token is valid")
+		void shouldReturnNewAccessTokenWhenRefreshTokenIsValid() {
+			// given
+			given(jwtTokenProvider.validateToken(TEST_REFRESH_TOKEN)).willReturn(true);
+			given(jwtTokenProvider.getMemberIdFromToken(TEST_REFRESH_TOKEN)).willReturn(TEST_MEMBER_ID);
+			given(refreshTokenRepository.findByMemberId(TEST_MEMBER_ID)).willReturn(Optional.of(TEST_REFRESH_TOKEN));
+			given(memberService.findById(TEST_MEMBER_ID)).willReturn(activeMember);
+			given(jwtTokenProvider.generateAccessToken(TEST_MEMBER_ID, TEST_SOCIAL_ID, "KAKAO")).willReturn(
+				"new-access-token");
+			given(jwtTokenProvider.getAccessTokenExpiresIn()).willReturn(86400L);
+
+			// when
+			TokenRefreshResponse response = authService.refreshAccessToken(TEST_REFRESH_TOKEN);
+
+			// then
+			assertSoftly(softly -> {
+				softly.assertThat(response.getTokenType()).isEqualTo("Bearer");
+				softly.assertThat(response.getAccessToken()).isEqualTo("new-access-token");
+				softly.assertThat(response.getExpiresIn()).isEqualTo(86400L);
+			});
+		}
+
+		@Test
+		@DisplayName("should throw INVALID_TOKEN when refresh token fails validation")
+		void shouldThrowInvalidTokenWhenRefreshTokenFailsValidation() {
+			// given
+			given(jwtTokenProvider.validateToken("invalid-token")).willReturn(false);
+
+			// when & then
+			assertThatThrownBy(() -> authService.refreshAccessToken("invalid-token"))
+				.isInstanceOf(MemberServiceApiException.class)
+				.satisfies(ex -> assertThat(((MemberServiceApiException)ex).getErrorCode())
+					.isEqualTo(ErrorCode.INVALID_TOKEN));
+		}
+
+		@ParameterizedTest(name = "should throw INVALID_TOKEN for malformed token=\"{0}\"")
+		@DisplayName("should throw INVALID_TOKEN for malformed refresh tokens")
+		@ValueSource(strings = {"", "not.a.jwt", "Bearer only", "eyJhbGciOiJIUzI1NiJ9"})
+		void shouldThrowInvalidTokenForMalformedRefreshTokens(String malformedToken) {
+			// given
+			given(jwtTokenProvider.validateToken(malformedToken)).willReturn(false);
+
+			// when & then
+			assertThatThrownBy(() -> authService.refreshAccessToken(malformedToken))
+				.isInstanceOf(MemberServiceApiException.class)
+				.satisfies(ex -> assertThat(((MemberServiceApiException)ex).getErrorCode())
+					.isEqualTo(ErrorCode.INVALID_TOKEN));
+		}
+
+		@Test
+		@DisplayName("should throw INVALID_TOKEN when no refresh token stored in redis")
+		void shouldThrowInvalidTokenWhenNoRefreshTokenStoredInRedis() {
+			// given
+			given(jwtTokenProvider.validateToken(TEST_REFRESH_TOKEN)).willReturn(true);
+			given(jwtTokenProvider.getMemberIdFromToken(TEST_REFRESH_TOKEN)).willReturn(TEST_MEMBER_ID);
+			given(refreshTokenRepository.findByMemberId(TEST_MEMBER_ID)).willReturn(Optional.empty());
+
+			// when & then
+			assertThatThrownBy(() -> authService.refreshAccessToken(TEST_REFRESH_TOKEN))
+				.isInstanceOf(MemberServiceApiException.class)
+				.satisfies(ex -> assertThat(((MemberServiceApiException)ex).getErrorCode())
+					.isEqualTo(ErrorCode.INVALID_TOKEN));
+		}
+
+		@Test
+		@DisplayName("should throw INVALID_TOKEN when stored token does not match request token")
+		void shouldThrowInvalidTokenWhenStoredTokenDoesNotMatchRequestToken() {
+			// given
+			given(jwtTokenProvider.validateToken(TEST_REFRESH_TOKEN)).willReturn(true);
+			given(jwtTokenProvider.getMemberIdFromToken(TEST_REFRESH_TOKEN)).willReturn(TEST_MEMBER_ID);
+			given(refreshTokenRepository.findByMemberId(TEST_MEMBER_ID)).willReturn(
+				Optional.of("completely-different-token"));
+
+			// when & then
+			assertThatThrownBy(() -> authService.refreshAccessToken(TEST_REFRESH_TOKEN))
+				.isInstanceOf(MemberServiceApiException.class)
+				.satisfies(ex -> assertThat(((MemberServiceApiException)ex).getErrorCode())
+					.isEqualTo(ErrorCode.INVALID_TOKEN));
+		}
+
+		@Test
+		@DisplayName("should throw exception when member not found during token refresh")
+		void shouldThrowExceptionWhenMemberNotFoundDuringTokenRefresh() {
+			// given
+			given(jwtTokenProvider.validateToken(TEST_REFRESH_TOKEN)).willReturn(true);
+			given(jwtTokenProvider.getMemberIdFromToken(TEST_REFRESH_TOKEN)).willReturn(TEST_MEMBER_ID);
+			given(refreshTokenRepository.findByMemberId(TEST_MEMBER_ID)).willReturn(Optional.of(TEST_REFRESH_TOKEN));
+			given(memberService.findById(TEST_MEMBER_ID))
+				.willThrow(new MemberServiceApiException(ErrorCode.MEMBER_NOT_FOUND));
+
+			// when & then
+			assertThatThrownBy(() -> authService.refreshAccessToken(TEST_REFRESH_TOKEN))
+				.isInstanceOf(MemberServiceApiException.class)
+				.satisfies(ex -> assertThat(((MemberServiceApiException)ex).getErrorCode())
+					.isEqualTo(ErrorCode.MEMBER_NOT_FOUND));
+		}
+
+		@Test
+		@DisplayName("should not generate new access token when token validation fails")
+		void shouldNotGenerateNewAccessTokenWhenTokenValidationFails() {
+			// given
+			given(jwtTokenProvider.validateToken("bad-token")).willReturn(false);
+
+			// when & then
+			assertThatThrownBy(() -> authService.refreshAccessToken("bad-token"))
+				.isInstanceOf(MemberServiceApiException.class);
+
+			verify(jwtTokenProvider, never()).generateAccessToken(anyLong(), anyString(), anyString());
+		}
 	}
 }

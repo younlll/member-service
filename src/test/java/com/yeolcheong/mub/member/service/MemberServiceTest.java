@@ -1,6 +1,7 @@
 package com.yeolcheong.mub.member.service;
 
 import static org.assertj.core.api.Assertions.*;
+import static org.assertj.core.api.SoftAssertions.assertSoftly;
 import static org.mockito.BDDMockito.*;
 
 import java.time.LocalDateTime;
@@ -8,8 +9,13 @@ import java.util.Optional;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.NullAndEmptySource;
+import org.junit.jupiter.params.provider.ValueSource;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -17,11 +23,14 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import com.yeolcheong.mub.member.common.MemberStatus;
 import com.yeolcheong.mub.member.common.SnsProvider;
 import com.yeolcheong.mub.member.domain.Member;
+import com.yeolcheong.mub.member.dto.MemberInfoResponse;
 import com.yeolcheong.mub.member.dto.SnsUserInfoResponse;
+import com.yeolcheong.mub.member.exception.ErrorCode;
+import com.yeolcheong.mub.member.exception.MemberServiceApiException;
 import com.yeolcheong.mub.member.repository.MemberRepository;
 
 @ExtendWith(MockitoExtension.class)
-@DisplayName("MemberService 테스트")
+@DisplayName("MemberService")
 class MemberServiceTest {
 
 	@Mock
@@ -35,7 +44,6 @@ class MemberServiceTest {
 
 	@BeforeEach
 	void setUp() {
-		// 테스트용 회원 데이터 준비
 		testMember = Member.builder()
 			.id(1L)
 			.snsProvider(SnsProvider.KAKAO)
@@ -47,103 +55,324 @@ class MemberServiceTest {
 			.lastLoginAt(LocalDateTime.now())
 			.build();
 
-		// 카카오 사용자 정보 준비
-		SnsUserInfoResponse.KakaoAccount kakaoAccount = SnsUserInfoResponse.KakaoAccount.builder()
-			.email("test@example.com")
-			.build();
-
 		kakaoUserInfo = SnsUserInfoResponse.builder()
 			.id(1234567890L)
 			.connectedAt("2025-10-24T00:00:00Z")
-			.kakaoAccount(kakaoAccount)
+			.kakaoAccount(SnsUserInfoResponse.KakaoAccount.builder()
+				.email("test@example.com")
+				.build())
 			.build();
 	}
 
-	@Test
-	@DisplayName("소셜 ID로 회원을 조회한다")
-	void shouldFindMemberBySocialId() {
-		// given
-		given(memberRepository.findBySnsProviderAndSocialId(SnsProvider.KAKAO, "1234567890")).willReturn(
-			Optional.of(testMember));
+	// =========================================================
+	// findById
+	// =========================================================
+	@Nested
+	@DisplayName("findById")
+	class FindById {
 
-		// when
-		Optional<Member> foundMember = memberService.findBySocialId(SnsProvider.KAKAO, "1234567890");
+		@Test
+		@DisplayName("should return member when id exists")
+		void shouldReturnMemberWhenIdExists() {
+			// given
+			given(memberRepository.findById(1L)).willReturn(Optional.of(testMember));
 
-		// then
-		assertThat(foundMember).isPresent();
-		assertThat(foundMember.get().getSocialId()).isEqualTo("1234567890");
-		verify(memberRepository, times(1)).findBySnsProviderAndSocialId(SnsProvider.KAKAO, "1234567890");
+			// when
+			Member result = memberService.findById(1L);
+
+			// then
+			assertSoftly(softly -> {
+				softly.assertThat(result).isNotNull();
+				softly.assertThat(result.getId()).isEqualTo(1L);
+				softly.assertThat(result.getEmail()).isEqualTo("test@example.com");
+				softly.assertThat(result.getSnsProvider()).isEqualTo(SnsProvider.KAKAO);
+				softly.assertThat(result.getStatus()).isEqualTo(MemberStatus.ACTIVE);
+			});
+			verify(memberRepository, times(1)).findById(1L);
+		}
+
+		@Test
+		@DisplayName("should throw MemberServiceApiException when id not found")
+		void shouldThrowExceptionWhenIdNotFound() {
+			// given
+			given(memberRepository.findById(999L)).willReturn(Optional.empty());
+
+			// when & then
+			assertThatThrownBy(() -> memberService.findById(999L))
+				.isInstanceOf(MemberServiceApiException.class)
+				.satisfies(ex -> assertThat(((MemberServiceApiException) ex).getErrorCode())
+					.isEqualTo(ErrorCode.MEMBER_NOT_FOUND));
+
+			verify(memberRepository, times(1)).findById(999L);
+		}
+
+		@ParameterizedTest(name = "should throw exception for edge-case id={0}")
+		@DisplayName("should throw exception for edge-case ids")
+		@ValueSource(longs = {-1L, 0L, Long.MAX_VALUE})
+		void shouldThrowExceptionForEdgeCaseIds(long edgeId) {
+			// given
+			given(memberRepository.findById(edgeId)).willReturn(Optional.empty());
+
+			// when & then
+			assertThatThrownBy(() -> memberService.findById(edgeId))
+				.isInstanceOf(MemberServiceApiException.class)
+				.satisfies(ex -> assertThat(((MemberServiceApiException) ex).getErrorCode())
+					.isEqualTo(ErrorCode.MEMBER_NOT_FOUND));
+		}
 	}
 
-	@Test
-	@DisplayName("존재하지 않는 소셜 ID 조회 시 빈 Optional 반환")
-	void shouldReturnEmptyWhenSocialIdNotFound() {
-		// given
-		given(memberRepository.findBySnsProviderAndSocialId(SnsProvider.KAKAO, "unknown")).willReturn(Optional.empty());
+	// =========================================================
+	// findBySocialId
+	// =========================================================
+	@Nested
+	@DisplayName("findBySocialId")
+	class FindBySocialId {
 
-		// when
-		Optional<Member> foundMember = memberService.findBySocialId(SnsProvider.KAKAO, "unknown");
+		@Test
+		@DisplayName("should return member when valid socialId and provider given")
+		void shouldReturnMemberWhenValidSocialIdAndProviderGiven() {
+			// given
+			given(memberRepository.findBySnsProviderAndSocialId(SnsProvider.KAKAO, "1234567890"))
+				.willReturn(Optional.of(testMember));
 
-		// then
-		assertThat(foundMember).isEmpty();
-		verify(memberRepository, times(1)).findBySnsProviderAndSocialId(SnsProvider.KAKAO, "unknown");
+			// when
+			Optional<Member> result = memberService.findBySocialId(SnsProvider.KAKAO, "1234567890");
+
+			// then
+			assertSoftly(softly -> {
+				softly.assertThat(result).isPresent();
+				softly.assertThat(result.get().getSocialId()).isEqualTo("1234567890");
+				softly.assertThat(result.get().getSnsProvider()).isEqualTo(SnsProvider.KAKAO);
+			});
+			verify(memberRepository, times(1)).findBySnsProviderAndSocialId(SnsProvider.KAKAO, "1234567890");
+		}
+
+		@ParameterizedTest(name = "should return empty Optional for invalid socialId=\"{0}\"")
+		@DisplayName("should return empty Optional for invalid or non-existent socialIds")
+		@NullAndEmptySource
+		@ValueSource(strings = {"unknown", "   ", "000000000"})
+		void shouldReturnEmptyForInvalidSocialId(String invalidId) {
+			// given
+			given(memberRepository.findBySnsProviderAndSocialId(SnsProvider.KAKAO, invalidId))
+				.willReturn(Optional.empty());
+
+			// when
+			Optional<Member> result = memberService.findBySocialId(SnsProvider.KAKAO, invalidId);
+
+			// then
+			assertThat(result).isEmpty();
+		}
+
+		@Test
+		@DisplayName("should distinguish members with same socialId but different provider")
+		void shouldDistinguishMembersByProvider() {
+			// given
+			String sameSocialId = "1234567890";
+			given(memberRepository.findBySnsProviderAndSocialId(SnsProvider.KAKAO, sameSocialId))
+				.willReturn(Optional.of(testMember));
+
+			// when
+			Optional<Member> kakaoResult = memberService.findBySocialId(SnsProvider.KAKAO, sameSocialId);
+
+			// then
+			assertThat(kakaoResult).isPresent();
+		}
 	}
 
-	@Test
-	@DisplayName("카카오 사용자 정보로 회원을 생성한다")
-	void shouldCreateMemberFromKakaoUser() {
-		// given
-		Member newMember = Member.builder()
-			.id(2L)
-			.snsProvider(SnsProvider.KAKAO)
-			.socialId("1234567890")
-			.email("test@example.com")
-			.status(MemberStatus.INACTIVE)
-			.createdAt(LocalDateTime.now())
-			.build();
+	// =========================================================
+	// createdFromSnsUser
+	// =========================================================
+	@Nested
+	@DisplayName("createdFromSnsUser")
+	class CreatedFromSnsUser {
 
-		given(memberRepository.save(any(Member.class))).willReturn(newMember);
+		@Test
+		@DisplayName("should create member with correct fields from kakao user info")
+		void shouldCreateMemberWithCorrectFieldsFromKakaoUserInfo() {
+			// given
+			Member savedMember = Member.builder()
+				.id(2L)
+				.snsProvider(SnsProvider.KAKAO)
+				.socialId("1234567890")
+				.email("test@example.com")
+				.status(MemberStatus.INACTIVE)
+				.createdAt(LocalDateTime.now())
+				.build();
+			given(memberRepository.save(any(Member.class))).willReturn(savedMember);
 
-		// when
-		Member createdMember = memberService.createdFromSnsUser(kakaoUserInfo);
+			// when
+			Member result = memberService.createdFromSnsUser(kakaoUserInfo);
 
-		// then
-		assertThat(createdMember).isNotNull();
-		assertThat(createdMember.getId()).isEqualTo(2L);
-		assertThat(createdMember.getSnsProvider()).isEqualTo(SnsProvider.KAKAO);
-		assertThat(createdMember.getSocialId()).isEqualTo("1234567890");
-		assertThat(createdMember.getEmail()).isEqualTo("test@example.com");
-		assertThat(createdMember.getStatus()).isEqualTo(MemberStatus.INACTIVE);
+			// then
+			assertSoftly(softly -> {
+				softly.assertThat(result.getId()).isEqualTo(2L);
+				softly.assertThat(result.getSnsProvider()).isEqualTo(SnsProvider.KAKAO);
+				softly.assertThat(result.getSocialId()).isEqualTo("1234567890");
+				softly.assertThat(result.getEmail()).isEqualTo("test@example.com");
+				softly.assertThat(result.getStatus()).isEqualTo(MemberStatus.INACTIVE);
+			});
+			verify(memberRepository, times(1)).save(any(Member.class));
+		}
 
-		verify(memberRepository, times(1)).save(any(Member.class));
+		@Test
+		@DisplayName("should always set INACTIVE status on new member")
+		void shouldAlwaysSetInactiveStatusOnNewMember() {
+			// given
+			ArgumentCaptor<Member> captor = ArgumentCaptor.forClass(Member.class);
+			given(memberRepository.save(captor.capture())).willAnswer(inv -> inv.getArgument(0));
+
+			// when
+			memberService.createdFromSnsUser(kakaoUserInfo);
+
+			// then
+			assertThat(captor.getValue().getStatus()).isEqualTo(MemberStatus.INACTIVE);
+		}
+
+		@Test
+		@DisplayName("should always set KAKAO as snsProvider on new member")
+		void shouldAlwaysSetKakaoAsSnsProvider() {
+			// given
+			ArgumentCaptor<Member> captor = ArgumentCaptor.forClass(Member.class);
+			given(memberRepository.save(captor.capture())).willAnswer(inv -> inv.getArgument(0));
+
+			// when
+			memberService.createdFromSnsUser(kakaoUserInfo);
+
+			// then
+			assertThat(captor.getValue().getSnsProvider()).isEqualTo(SnsProvider.KAKAO);
+		}
+
+		@Test
+		@DisplayName("should set lastLoginAt to approximately current time on creation")
+		void shouldSetLastLoginAtToCurrentTimeOnCreation() {
+			// given
+			LocalDateTime before = LocalDateTime.now().minusSeconds(1);
+			ArgumentCaptor<Member> captor = ArgumentCaptor.forClass(Member.class);
+			given(memberRepository.save(captor.capture())).willAnswer(inv -> inv.getArgument(0));
+
+			// when
+			memberService.createdFromSnsUser(kakaoUserInfo);
+
+			// then
+			LocalDateTime after = LocalDateTime.now().plusSeconds(1);
+			assertThat(captor.getValue().getLastLoginAt())
+				.isAfterOrEqualTo(before)
+				.isBeforeOrEqualTo(after);
+		}
+
+		@Test
+		@DisplayName("should create member even when email is null")
+		void shouldCreateMemberEvenWhenEmailIsNull() {
+			// given
+			SnsUserInfoResponse noEmailUserInfo = SnsUserInfoResponse.builder()
+				.id(9999L)
+				.connectedAt("2025-10-24T00:00:00Z")
+				.kakaoAccount(SnsUserInfoResponse.KakaoAccount.builder().build())
+				.build();
+
+			Member savedMember = Member.builder()
+				.id(3L)
+				.snsProvider(SnsProvider.KAKAO)
+				.socialId("9999")
+				.email(null)
+				.status(MemberStatus.INACTIVE)
+				.build();
+			given(memberRepository.save(any(Member.class))).willReturn(savedMember);
+
+			// when
+			Member result = memberService.createdFromSnsUser(noEmailUserInfo);
+
+			// then
+			assertSoftly(softly -> {
+				softly.assertThat(result).isNotNull();
+				softly.assertThat(result.getEmail()).isNull();
+				softly.assertThat(result.getStatus()).isEqualTo(MemberStatus.INACTIVE);
+			});
+		}
+
+		@Test
+		@DisplayName("should propagate exception when repository save fails")
+		void shouldPropagateExceptionWhenRepositorySaveFails() {
+			// given
+			given(memberRepository.save(any(Member.class)))
+				.willThrow(new RuntimeException("DB 저장 실패"));
+
+			// when & then
+			assertThatThrownBy(() -> memberService.createdFromSnsUser(kakaoUserInfo))
+				.isInstanceOf(RuntimeException.class)
+				.hasMessage("DB 저장 실패");
+		}
 	}
 
-	@Test
-	@DisplayName("이메일이 없는 카카오 사용자도 회원 생성 가능")
-	void shouldCreateMemberWithoutEmail() {
-		// given
-		SnsUserInfoResponse userInfoWithoutEmail = SnsUserInfoResponse.builder()
-			.id(9999L)
-			.connectedAt("2025-10-24T00:00:00Z")
-			.kakaoAccount(SnsUserInfoResponse.KakaoAccount.builder().build())
-			.build();
+	// =========================================================
+	// getMemberByEmail
+	// =========================================================
+	@Nested
+	@DisplayName("getMemberByEmail")
+	class GetMemberByEmail {
 
-		Member newMember = Member.builder()
-			.id(3L)
-			.snsProvider(SnsProvider.KAKAO)
-			.socialId("9999")
-			.email(null)
-			.status(MemberStatus.INACTIVE)
-			.build();
+		@Test
+		@DisplayName("should return MemberInfoResponse when email exists")
+		void shouldReturnMemberInfoResponseWhenEmailExists() {
+			// given
+			given(memberRepository.findByEmail("test@example.com"))
+				.willReturn(Optional.of(testMember));
 
-		given(memberRepository.save(any(Member.class))).willReturn(newMember);
+			// when
+			MemberInfoResponse result = memberService.getMemberByEmail("test@example.com");
 
-		// when
-		Member createdMember = memberService.createdFromSnsUser(userInfoWithoutEmail);
+			// then
+			assertSoftly(softly -> {
+				softly.assertThat(result).isNotNull();
+				softly.assertThat(result.getMemberId()).isEqualTo(testMember.getId());
+				softly.assertThat(result.getEmail()).isEqualTo("test@example.com");
+			});
+			verify(memberRepository, times(1)).findByEmail("test@example.com");
+		}
 
-		// then
-		assertThat(createdMember).isNotNull();
-		assertThat(createdMember.getEmail()).isNull();
-		verify(memberRepository, times(1)).save(any(Member.class));
+		@Test
+		@DisplayName("should throw MemberServiceApiException when email not found")
+		void shouldThrowExceptionWhenEmailNotFound() {
+			// given
+			given(memberRepository.findByEmail("notfound@example.com"))
+				.willReturn(Optional.empty());
+
+			// when & then
+			assertThatThrownBy(() -> memberService.getMemberByEmail("notfound@example.com"))
+				.isInstanceOf(MemberServiceApiException.class)
+				.satisfies(ex -> assertThat(((MemberServiceApiException) ex).getErrorCode())
+					.isEqualTo(ErrorCode.MEMBER_NOT_FOUND));
+
+			verify(memberRepository, times(1)).findByEmail("notfound@example.com");
+		}
+
+		@ParameterizedTest(name = "should throw exception for invalid email=\"{0}\"")
+		@DisplayName("should throw exception for invalid emails")
+		@NullAndEmptySource
+		@ValueSource(strings = {"notanemail", "   ", "@nodomain", "missing@"})
+		void shouldThrowExceptionForInvalidEmails(String invalidEmail) {
+			// given
+			given(memberRepository.findByEmail(invalidEmail)).willReturn(Optional.empty());
+
+			// when & then
+			assertThatThrownBy(() -> memberService.getMemberByEmail(invalidEmail))
+				.isInstanceOf(MemberServiceApiException.class)
+				.satisfies(ex -> assertThat(((MemberServiceApiException) ex).getErrorCode())
+					.isEqualTo(ErrorCode.MEMBER_NOT_FOUND));
+		}
+
+		@Test
+		@DisplayName("should treat email lookup as case-sensitive")
+		void shouldTreatEmailLookupAsCaseSensitive() {
+			// given
+			given(memberRepository.findByEmail("Test@Example.com")).willReturn(Optional.empty());
+
+			// when & then
+			assertThatThrownBy(() -> memberService.getMemberByEmail("Test@Example.com"))
+				.isInstanceOf(MemberServiceApiException.class);
+
+			// 원본 소문자 이메일로는 조회하지 않음
+			verify(memberRepository, never()).findByEmail("test@example.com");
+		}
 	}
 }
