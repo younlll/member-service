@@ -110,7 +110,7 @@ public class AuthController {
 		return ResponseEntity.ok(response);
 	}
 
-	@PostMapping("/auth/login/token")
+	@PostMapping("/login/token")
 	public ResponseEntity<LoginResponse> loginWithKakaoToken(
 		@RequestBody KakaoTokenLoginRequest request) {
 		log.info("카카오 SDK 토큰으로 로그인 요청");

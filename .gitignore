@@ -54,11 +54,11 @@ HELP.md
 *.orig
 
 # ========== 환경설정 (보안 중요!) ==========
-**/application-local.properties
-**/application-prod.properties
-**/application-test.properties
-**/application-docker.properties
+**.properties
 .env
 .env.local
 .env.production
 *.yml
+*.jks
+*.keystore
+*.p12
