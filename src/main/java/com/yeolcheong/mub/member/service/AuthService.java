@@ -12,8 +12,8 @@ import org.springframework.util.MultiValueMap;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
 
-import com.yeolcheong.mub.member.common.KakaoProperties;
-import com.yeolcheong.mub.member.common.SnsProvider;
+import com.yeolcheong.mub.member.config.KakaoProperties;
+import com.yeolcheong.mub.member.domain.SnsProvider;
 import com.yeolcheong.mub.member.domain.Member;
 import com.yeolcheong.mub.member.domain.RefreshToken;
 import com.yeolcheong.mub.member.dto.LoginResponse;

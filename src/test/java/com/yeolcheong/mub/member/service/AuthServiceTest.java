@@ -23,9 +23,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
 
-import com.yeolcheong.mub.member.common.KakaoProperties;
-import com.yeolcheong.mub.member.common.MemberStatus;
-import com.yeolcheong.mub.member.common.SnsProvider;
+import com.yeolcheong.mub.member.config.KakaoProperties;
+import com.yeolcheong.mub.member.domain.MemberStatus;
+import com.yeolcheong.mub.member.domain.SnsProvider;
 import com.yeolcheong.mub.member.domain.Member;
 import com.yeolcheong.mub.member.dto.LoginResponse;
 import com.yeolcheong.mub.member.dto.LoginTokenResponse;

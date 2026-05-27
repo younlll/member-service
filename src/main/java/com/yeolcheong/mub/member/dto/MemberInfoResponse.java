@@ -1,7 +1,7 @@
 package com.yeolcheong.mub.member.dto;
 
-import com.yeolcheong.mub.member.common.MemberStatus;
-import com.yeolcheong.mub.member.common.SnsProvider;
+import com.yeolcheong.mub.member.domain.MemberStatus;
+import com.yeolcheong.mub.member.domain.SnsProvider;
 import com.yeolcheong.mub.member.domain.Member;
 
 import lombok.AllArgsConstructor;

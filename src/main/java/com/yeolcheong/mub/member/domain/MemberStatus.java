@@ -1,4 +1,4 @@
-package com.yeolcheong.mub.member.common;
+package com.yeolcheong.mub.member.domain;
 
 public enum MemberStatus {
 	// Mub구독

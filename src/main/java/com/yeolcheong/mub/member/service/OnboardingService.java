@@ -6,7 +6,7 @@ import java.util.Map;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.yeolcheong.mub.member.common.MemberStatus;
+import com.yeolcheong.mub.member.domain.MemberStatus;
 import com.yeolcheong.mub.member.domain.District;
 import com.yeolcheong.mub.member.domain.InterestOption;
 import com.yeolcheong.mub.member.domain.InterestType;
