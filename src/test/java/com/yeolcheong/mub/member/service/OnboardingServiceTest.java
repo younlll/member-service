@@ -404,7 +404,8 @@ class OnboardingServiceTest {
 			// when & then
 			assertThatThrownBy(() -> onboardingService.completeOnboarding(1L, buildValidRequest("닉네임", 1)))
 				.isInstanceOf(OnboardingServiceApiException.class)
-				.hasMessage("유효하지 않은 지역 코드입니다");
+				.extracting("errorCode")
+				.isEqualTo(ErrorCode.INVALID_DISTRICT_CODE);
 
 			then(memberInterestRepository).should(never()).save(any());
 			then(memberRepository).should(never()).save(any());

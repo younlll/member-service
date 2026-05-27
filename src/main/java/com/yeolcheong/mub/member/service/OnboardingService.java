@@ -120,7 +120,7 @@ public class OnboardingService {
 
 		// 지역 코드 유효성 확인
 		District district = districtRepository.findByDistCode1AndDistCode2(distCode1, distCode2)
-			.orElseThrow(() -> new OnboardingServiceApiException("유효하지 않은 지역 코드입니다"));
+			.orElseThrow(() -> new OnboardingServiceApiException(ErrorCode.INVALID_DISTRICT_CODE));
 
 		member.updateRegion(district.getDistCode1Name(), district.getDistCode2Name());
 
