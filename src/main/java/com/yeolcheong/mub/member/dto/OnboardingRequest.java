@@ -85,7 +85,7 @@ public class OnboardingRequest {
 		private InterestType interestType;
 
 		@NotNull(message = "관심사 옵션은 필수입니다")
-		@Size(min = 1, message = "관심사별 옵션ㄴ은 최소 1개 이상 선택해야 합니다")
+		@Size(min = 1, message = "관심사별 옵션은 최소 1개 이상 선택해야 합니다")
 		private List<InterestOption> options;
 	}
 }
