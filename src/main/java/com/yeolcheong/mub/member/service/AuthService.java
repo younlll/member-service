@@ -172,7 +172,7 @@ public class AuthService {
 	}
 
 	private LoginTokenResponse getAccessToken(String code) {
-		log.info("로그인을 위한 Access Token 요청 시작: code={}", code);
+		log.info("로그인을 위한 Access Token 요청 시작");
 
 		MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
 		params.add("grant_type", "authorization_code");

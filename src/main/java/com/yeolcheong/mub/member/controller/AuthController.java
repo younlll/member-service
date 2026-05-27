@@ -52,7 +52,7 @@ public class AuthController {
 	 */
 	@GetMapping("/kakao/callback")
 	public ResponseEntity<?> kakaoCallback(@RequestParam String code) {
-		log.info("카카오 콜백 수신: code={}", code);
+		log.info("카카오 콜백 수신");
 
 		LoginResponse loginResponse = authService.login(code);
 
@@ -94,7 +94,7 @@ public class AuthController {
 	 */
 	@PostMapping("/login")
 	public ResponseEntity<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
-		log.info("카카오 로그인 API 호출: code={}", request.getCode());
+		log.info("카카오 로그인 API 호출");
 
 		LoginResponse response = authService.login(request.getCode());
 
