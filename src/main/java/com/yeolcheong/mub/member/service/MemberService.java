@@ -39,6 +39,7 @@ public class MemberService {
 		return memberRepository.findBySnsProviderAndSocialId(snsProvider, socialId);
 	}
 
+	@Transactional
 	public Member createdFromSnsUser(SnsUserInfoResponse snsUserInfoResponse) {
 		log.info("신규 회원 생성: snsId={}, email={}", snsUserInfoResponse.getId(), snsUserInfoResponse.getEmail());
 
