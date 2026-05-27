@@ -1,6 +1,9 @@
 package com.yeolcheong.mub.member.service;
 
 import java.time.LocalDateTime;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
 import java.util.Optional;
 
 import org.springframework.stereotype.Service;
@@ -10,6 +13,7 @@ import com.yeolcheong.mub.member.common.MemberStatus;
 import com.yeolcheong.mub.member.common.SnsProvider;
 import com.yeolcheong.mub.member.domain.Member;
 import com.yeolcheong.mub.member.dto.MemberInfoResponse;
+import com.yeolcheong.mub.member.dto.MemberSummaryResponse;
 import com.yeolcheong.mub.member.dto.SnsUserInfoResponse;
 import com.yeolcheong.mub.member.exception.ErrorCode;
 import com.yeolcheong.mub.member.exception.MemberServiceApiException;
@@ -63,5 +67,24 @@ public class MemberService {
 
 		log.info("회원 조회 성공: memberId={}", member.getId());
 		return MemberInfoResponse.from(member);
+	}
+
+	/**
+	 * Bulk lookup for service-to-service enrichment.
+	 * Returns only the members that actually exist — callers must tolerate
+	 * a result smaller than the requested id set (e.g. deleted members).
+	 */
+	public List<MemberSummaryResponse> findSummariesByIds(Collection<Long> memberIds) {
+		if (memberIds == null || memberIds.isEmpty()) {
+			return Collections.emptyList();
+		}
+		log.info("회원 다건 조회: requestedSize={}", memberIds.size());
+
+		List<MemberSummaryResponse> results = memberRepository.findAllById(memberIds).stream()
+			.map(MemberSummaryResponse::from)
+			.toList();
+
+		log.info("회원 다건 조회 완료: requestedSize={}, foundSize={}", memberIds.size(), results.size());
+		return results;
 	}
 }

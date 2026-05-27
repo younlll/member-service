@@ -5,6 +5,8 @@ import static org.assertj.core.api.SoftAssertions.assertSoftly;
 import static org.mockito.BDDMockito.*;
 
 import java.time.LocalDateTime;
+import java.util.Collections;
+import java.util.List;
 import java.util.Optional;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -24,6 +26,7 @@ import com.yeolcheong.mub.member.common.MemberStatus;
 import com.yeolcheong.mub.member.common.SnsProvider;
 import com.yeolcheong.mub.member.domain.Member;
 import com.yeolcheong.mub.member.dto.MemberInfoResponse;
+import com.yeolcheong.mub.member.dto.MemberSummaryResponse;
 import com.yeolcheong.mub.member.dto.SnsUserInfoResponse;
 import com.yeolcheong.mub.member.exception.ErrorCode;
 import com.yeolcheong.mub.member.exception.MemberServiceApiException;
@@ -373,6 +376,84 @@ class MemberServiceTest {
 
 			// 원본 소문자 이메일로는 조회하지 않음
 			verify(memberRepository, never()).findByEmail("test@example.com");
+		}
+	}
+
+	// =========================================================
+	// findSummariesByIds — bulk lookup for service-to-service
+	// =========================================================
+	@Nested
+	@DisplayName("findSummariesByIds")
+	class FindSummariesByIds {
+
+		@Test
+		@DisplayName("should return summaries for all existing ids")
+		void shouldReturnSummariesForAllExistingIds() {
+			// given
+			Member other = Member.builder()
+				.id(2L)
+				.snsProvider(SnsProvider.KAKAO)
+				.socialId("9999")
+				.email("other@example.com")
+				.nickname("아더")
+				.status(MemberStatus.ACTIVE)
+				.build();
+			List<Long> ids = List.of(1L, 2L);
+			given(memberRepository.findAllById(ids)).willReturn(List.of(testMember, other));
+
+			// when
+			List<MemberSummaryResponse> result = memberService.findSummariesByIds(ids);
+
+			// then
+			assertSoftly(softly -> {
+				softly.assertThat(result).hasSize(2);
+				softly.assertThat(result).extracting(MemberSummaryResponse::getMemberId)
+					.containsExactly(1L, 2L);
+				softly.assertThat(result).extracting(MemberSummaryResponse::getNickname)
+					.containsExactly("테스터", "아더");
+				softly.assertThat(result).extracting(MemberSummaryResponse::getEmail)
+					.containsExactly("test@example.com", "other@example.com");
+			});
+			verify(memberRepository, times(1)).findAllById(ids);
+		}
+
+		@Test
+		@DisplayName("should silently drop ids that do not exist")
+		void shouldSilentlyDropMissingIds() {
+			// given — request 3 ids but DB only has 1
+			List<Long> ids = List.of(1L, 99L, 100L);
+			given(memberRepository.findAllById(ids)).willReturn(List.of(testMember));
+
+			// when
+			List<MemberSummaryResponse> result = memberService.findSummariesByIds(ids);
+
+			// then
+			assertSoftly(softly -> {
+				softly.assertThat(result).hasSize(1);
+				softly.assertThat(result.get(0).getMemberId()).isEqualTo(1L);
+			});
+		}
+
+		@Test
+		@DisplayName("should return empty list when ids is null")
+		void shouldReturnEmptyListWhenIdsIsNull() {
+			// when
+			List<MemberSummaryResponse> result = memberService.findSummariesByIds(null);
+
+			// then
+			assertThat(result).isEmpty();
+			verify(memberRepository, never()).findAllById(any());
+		}
+
+		@Test
+		@DisplayName("should return empty list when ids is empty")
+		void shouldReturnEmptyListWhenIdsIsEmpty() {
+			// when
+			List<MemberSummaryResponse> result = memberService.findSummariesByIds(Collections.emptyList());
+
+			// then
+			assertThat(result).isEmpty();
+			verify(memberRepository, never()).findAllById(any());
 		}
 	}
 }

@@ -46,7 +46,8 @@ public class SecurityConfig {
 				.requestMatchers(
 					"/api/auth/**",
 					"/api/districts/**",
-					"/api/interests"
+					"/api/interests",
+					"/api/internal/**"
 				).permitAll()
 				.anyRequest().authenticated()
 			)
