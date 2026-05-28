@@ -30,14 +30,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 		String requestPath = request.getRequestURI();
 
 		if (requestPath.startsWith("/actuator")) {
-			log.debug("Actuator 경로 필터링 건너뜀: {}", requestPath);
+			log.debug("Skipping filter for actuator path: {}", requestPath);
 			filterChain.doFilter(request, response);
 			return;
 		}
 
 		String token = extractTokenFromRequest(request);
 
-		log.debug("토큰길이: {}", token != null ? token.length() : 0);
+		log.debug("Token length: {}", token != null ? token.length() : 0);
 
 		if (StringUtils.hasText(token) && jwtTokenProvider.validateToken(token)) {
 			try {
@@ -47,9 +47,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
 				SecurityContextHolder.getContext().setAuthentication(authentication);
 
-				log.debug("인증 성공: memberId={}", memberId);
+				log.debug("Authentication succeeded: memberId={}", memberId);
 			} catch (Exception e) {
-				log.error("인증 설정 중 오류 발생: {}", e.getMessage());
+				log.error("Error while setting authentication: {}", e.getMessage());
 			}
 		}
 

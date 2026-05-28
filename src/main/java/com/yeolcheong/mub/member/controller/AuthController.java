@@ -38,7 +38,7 @@ public class AuthController {
 	 */
 	@GetMapping("/login/url")
 	public ResponseEntity<Map<String, String>> getAuthUrl() {
-		log.info("로그인 URL 요청");
+		log.info("Login URL requested");
 
 		String authUrl = authService.getAuthUrl();
 		Map<String, String> response = new HashMap<>();
@@ -52,7 +52,7 @@ public class AuthController {
 	 */
 	@GetMapping("/kakao/callback")
 	public ResponseEntity<LoginResponse> kakaoCallback(@RequestParam String code) {
-		log.info("카카오 콜백 수신");
+		log.info("Kakao callback received");
 
 		LoginResponse loginResponse = authService.login(code);
 
@@ -68,7 +68,7 @@ public class AuthController {
 	 */
 	@PostMapping("/login")
 	public ResponseEntity<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
-		log.info("카카오 로그인 API 호출");
+		log.info("Kakao login API called");
 
 		LoginResponse response = authService.login(request.getCode());
 
@@ -77,7 +77,7 @@ public class AuthController {
 
 	@PostMapping("/refresh")
 	public ResponseEntity<TokenRefreshResponse> refreshToken(@Valid @RequestBody TokenRefreshRequest request) {
-		log.info("Access Token 재발급 요청");
+		log.info("Access token refresh requested");
 
 		TokenRefreshResponse response = authService.refreshAccessToken(request.getRefreshToken());
 
@@ -87,7 +87,7 @@ public class AuthController {
 	@PostMapping("/login/token")
 	public ResponseEntity<LoginResponse> loginWithKakaoToken(
 		@Valid @RequestBody KakaoTokenLoginRequest request) {
-		log.info("카카오 SDK 토큰으로 로그인 요청");
+		log.info("Login requested with Kakao SDK token");
 
 		LoginResponse response = authService.loginWithKakaoToken(request.getAccessToken());
 		return ResponseEntity.ok(response);

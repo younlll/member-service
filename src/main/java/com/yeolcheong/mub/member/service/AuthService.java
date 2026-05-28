@@ -39,7 +39,7 @@ public class AuthService {
 
 	@Transactional
 	public LoginResponse login(String code) {
-		log.info("소셜 로그인 시작");
+		log.info("Social login started");
 
 		LoginTokenResponse loginTokenResponse = kakaoClient.fetchAccessToken(code);
 		SnsUserInfoResponse snsUserInfoResponse = kakaoClient.fetchUserInfo(loginTokenResponse.getAccessToken());
@@ -49,7 +49,7 @@ public class AuthService {
 
 	@Transactional
 	public LoginResponse loginWithKakaoToken(String kakaoAccessToken) {
-		log.info("카카오 SDK 토큰 로그인 시작");
+		log.info("Kakao SDK token login started");
 
 		SnsUserInfoResponse snsUserInfoResponse = kakaoClient.fetchUserInfo(kakaoAccessToken);
 
@@ -58,22 +58,22 @@ public class AuthService {
 
 	@Transactional
 	public TokenRefreshResponse refreshAccessToken(String refreshToken) {
-		log.info("Access Token 재발급 요청");
+		log.info("Access token reissue requested");
 
 		if (!jwtTokenProvider.validateToken(refreshToken)) {
-			log.error("유효하지 않은 Refresh Token");
+			log.error("Invalid refresh token");
 			throw new MemberServiceApiException("유효하지 않은 Refresh Token입니다", ErrorCode.INVALID_TOKEN);
 		}
 
 		Long memberId = jwtTokenProvider.getMemberIdFromToken(refreshToken);
 
 		String storedRefreshToken = refreshTokenRepository.findByMemberId(memberId).orElseThrow(() -> {
-			log.error("Redis에 저장된 Refresh Token이 없음: memberId={}", memberId);
+			log.error("No refresh token stored in Redis: memberId={}", memberId);
 			return new MemberServiceApiException("로그인이 필요합니다", ErrorCode.INVALID_TOKEN);
 		});
 
 		if (!refreshToken.equals(storedRefreshToken)) {
-			log.error("Refresh Token 불일치: memberId={}", memberId);
+			log.error("Refresh token mismatch: memberId={}", memberId);
 			throw new MemberServiceApiException("유효하지 않은 Refresh Token입니다", ErrorCode.INVALID_TOKEN);
 		}
 
@@ -84,7 +84,7 @@ public class AuthService {
 		String newRefreshToken = jwtTokenProvider.generateRefreshToken(member.getId());
 		saveRefreshToken(member.getId(), newRefreshToken);
 
-		log.info("Access Token 재발급 성공: memberId={}", memberId);
+		log.info("Access token reissued: memberId={}", memberId);
 
 		return TokenRefreshResponse.builder()
 			.memberId(String.valueOf(member.getId()))
@@ -108,10 +108,10 @@ public class AuthService {
 		Member member;
 		if (isNewMember) {
 			member = memberService.createdFromSnsUser(snsUserInfoResponse);
-			log.info("신규 회원 생성: memberId={}, socialId={}", member.getId(), member.getSocialId());
+			log.info("New member created: memberId={}, socialId={}", member.getId(), member.getSocialId());
 		} else {
 			member = existingMember.get();
-			log.info("기존 회원 로그인: memberId={}, socialId={}", member.getId(), member.getSocialId());
+			log.info("Existing member login: memberId={}, socialId={}", member.getId(), member.getSocialId());
 		}
 
 		String accessToken = jwtTokenProvider.generateAccessToken(member.getId(), member.getSocialId(),
@@ -134,6 +134,6 @@ public class AuthService {
 			.build();
 
 		refreshTokenRepository.save(refreshToken, ttlSeconds);
-		log.debug("Refresh Token 저장: memberId={}", memberId);
+		log.debug("Refresh token saved: memberId={}", memberId);
 	}
 }

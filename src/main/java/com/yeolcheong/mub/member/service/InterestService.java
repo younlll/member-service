@@ -15,7 +15,7 @@ import lombok.extern.slf4j.Slf4j;
 public class InterestService {
 
 	public List<InterestResponse> getAllInterests() {
-		log.debug("관심사 목록 조회");
+		log.debug("Fetching interest list");
 		return InterestResponse.getAllInterests();
 	}
 }

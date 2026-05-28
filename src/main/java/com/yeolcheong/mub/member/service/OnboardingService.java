@@ -40,7 +40,7 @@ public class OnboardingService {
 
 	@Transactional
 	public OnboardingResponse completeOnboarding(Long memberId, OnboardingRequest onboardingRequest) {
-		log.info("회원가입 시작: memberId={}", memberId);
+		log.info("Onboarding started: memberId={}", memberId);
 
 		// 1. 회원 조회
 		Member member = memberRepository.findById(memberId)
@@ -74,7 +74,7 @@ public class OnboardingService {
 	 * 약관 동의 저장
 	 */
 	private void saveTermsAgreements(Member member, OnboardingRequest.TermsAgreementRequest termsAgreementRequest) {
-		log.debug("약관 동의 저장 시작: memberId={}", member.getId());
+		log.debug("Saving terms agreements: memberId={}", member.getId());
 
 		Map<TermsType, Boolean> agreements = termsAgreementRequest.toMap();
 
@@ -99,24 +99,24 @@ public class OnboardingService {
 			.toList();
 
 		memberTermsAgreementRepository.saveAll(memberTermsAgreements);
-		log.debug("약관 동의 저장 완료: memberId={}, count={}", member.getId(), memberTermsAgreements.size());
+		log.debug("Terms agreements saved: memberId={}, count={}", member.getId(), memberTermsAgreements.size());
 	}
 
 	/**
 	 * 닉네임 설정
 	 */
 	private void updateNickname(Member member, String nickname) {
-		log.debug("닉네임 설정 시작: memberId={}, nickname={}", member.getId(), nickname);
+		log.debug("Updating nickname: memberId={}, nickname={}", member.getId(), nickname);
 
 		member.updateNickname(nickname);
-		log.debug("닉네임 설정 완료: memberId={}, nickname={}", member.getId(), nickname);
+		log.debug("Nickname updated: memberId={}, nickname={}", member.getId(), nickname);
 	}
 
 	/**
 	 * 활동 지역 설정
 	 */
 	private void updateRegion(Member member, String distCode1, String distCode2) {
-		log.debug("활동 지역 설정 시작: memberId={}, distCode1={}, distCode2={}", member.getId(), distCode1, distCode2);
+		log.debug("Updating region: memberId={}, distCode1={}, distCode2={}", member.getId(), distCode1, distCode2);
 
 		// 지역 코드 유효성 확인
 		District district = districtRepository.findByDistCode1AndDistCode2(distCode1, distCode2)
@@ -124,7 +124,7 @@ public class OnboardingService {
 
 		member.updateRegion(district.getDistCode1Name(), district.getDistCode2Name());
 
-		log.debug("활동 지역 설정 완료: memberId={}, region={} {}",
+		log.debug("Region updated: memberId={}, region={} {}",
 			member.getId(), district.getDistCode1Name(), district.getDistCode2Name());
 	}
 
@@ -132,7 +132,7 @@ public class OnboardingService {
 	 * 관심사 저장
 	 */
 	private void saveInterests(Member member, List<OnboardingRequest.InterestRequest> interestRequests) {
-		log.debug("관심사 저장 시작: memberId={}, count={}", member.getId(), interestRequests.size());
+		log.debug("Saving interests: memberId={}, count={}", member.getId(), interestRequests.size());
 
 		if (interestRequests.isEmpty() || interestRequests.size() > 3) {
 			throw new MemberServiceApiException("관심사는 1개 이상 3개 이하로 선택해야 합니다", ErrorCode.INVALID_INTEREST_COUNT);

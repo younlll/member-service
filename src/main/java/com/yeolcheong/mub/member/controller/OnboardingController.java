@@ -31,7 +31,7 @@ public class OnboardingController {
 	 */
 	@PostMapping("/complete")
 	public ResponseEntity<OnboardingResponse> completeOnboarding(@Valid @RequestBody OnboardingRequest request) {
-		log.info("회원가입 완료 요청: nickname={}", request.getNickname());
+		log.info("Onboarding complete requested: nickname={}", request.getNickname());
 
 		Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 		Long memberId = Long.valueOf(authentication.getName());

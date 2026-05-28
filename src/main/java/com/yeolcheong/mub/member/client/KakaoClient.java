@@ -33,7 +33,7 @@ public class KakaoClient {
 	}
 
 	public LoginTokenResponse fetchAccessToken(String code) {
-		log.info("카카오 Access Token 요청");
+		log.info("Requesting Kakao access token");
 
 		MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
 		params.add("grant_type", "authorization_code");
@@ -51,25 +51,25 @@ public class KakaoClient {
 				.block();
 
 			if (response == null) {
-				log.error("카카오 토큰 응답이 null입니다");
+				log.error("Kakao token response is null");
 				throw new MemberServiceApiException("토큰 응답이 없습니다.", ErrorCode.EXTERNAL_API_ERROR);
 			}
 
-			log.info("카카오 Access Token 발급 성공");
+			log.info("Kakao access token issued successfully");
 			return response;
 		} catch (WebClientResponseException e) {
-			log.error("Access Token 발급 실패: status={}", e.getStatusCode());
+			log.error("Failed to issue access token: status={}", e.getStatusCode());
 			throw mapTokenException(e);
 		} catch (MemberServiceApiException e) {
 			throw e;
 		} catch (Exception e) {
-			log.error("카카오 토큰 발급 중 예외 발생", e);
+			log.error("Exception while issuing Kakao token", e);
 			throw new MemberServiceApiException("카카오 API 호출 중 오류가 발생했습니다", ErrorCode.EXTERNAL_API_ERROR);
 		}
 	}
 
 	public SnsUserInfoResponse fetchUserInfo(String accessToken) {
-		log.info("카카오 사용자 정보 조회 시작");
+		log.info("Fetching Kakao user info");
 
 		try {
 			SnsUserInfoResponse response = webClient.get()
@@ -80,14 +80,14 @@ public class KakaoClient {
 				.block();
 
 			if (response == null) {
-				log.error("카카오 사용자 정보 응답이 null입니다");
+				log.error("Kakao user info response is null");
 				throw new MemberServiceApiException("카카오 사용자 정보 응답이 없습니다.", ErrorCode.EXTERNAL_API_ERROR);
 			}
 
-			log.info("카카오 사용자 정보 조회 성공: kakaoId={}", response.getId());
+			log.info("Kakao user info fetched: kakaoId={}", response.getId());
 			return response;
 		} catch (WebClientResponseException e) {
-			log.error("카카오 사용자 정보 조회 실패: status={}", e.getStatusCode());
+			log.error("Failed to fetch Kakao user info: status={}", e.getStatusCode());
 			if (e.getStatusCode().value() == 401) {
 				throw new MemberServiceApiException("유효하지 않은 카카오 토큰입니다", ErrorCode.INVALID_TOKEN);
 			}
@@ -95,7 +95,7 @@ public class KakaoClient {
 		} catch (MemberServiceApiException e) {
 			throw e;
 		} catch (Exception e) {
-			log.error("카카오 사용자 정보 조회 중 예외 발생", e);
+			log.error("Exception while fetching Kakao user info", e);
 			throw new MemberServiceApiException("카카오 API 호출 중 오류가 발생했습니다", ErrorCode.EXTERNAL_API_ERROR);
 		}
 	}
