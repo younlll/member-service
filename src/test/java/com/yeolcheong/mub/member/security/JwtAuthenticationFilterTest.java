@@ -14,9 +14,8 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import com.yeolcheong.mub.member.config.SecurityConfig;
-import com.yeolcheong.mub.member.controller.TestController;
 
-@WebMvcTest(TestController.class)
+@WebMvcTest(AuthProbeController.class)
 @Import({SecurityConfig.class, JwtAuthenticationFilter.class})
 @DisplayName("JwtAuthenticationFilter 테스트")
 class JwtAuthenticationFilterTest {
@@ -41,7 +40,7 @@ class JwtAuthenticationFilterTest {
 		mockMvc.perform(get("/api/test/protected").header("Authorization", "Bearer " + token))
 			.andDo(print())
 			.andExpect(status().isOk())
-			.andExpect(content().string("인증 성공! 회원 ID: " + memberId));
+			.andExpect(content().string("authenticated:" + memberId));
 	}
 
 	@Test

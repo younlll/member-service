@@ -51,38 +51,12 @@ public class AuthController {
 	 * GET /api/auth/kakao/callback
 	 */
 	@GetMapping("/kakao/callback")
-	public ResponseEntity<?> kakaoCallback(@RequestParam String code) {
+	public ResponseEntity<LoginResponse> kakaoCallback(@RequestParam String code) {
 		log.info("카카오 콜백 수신");
 
 		LoginResponse loginResponse = authService.login(code);
 
 		return ResponseEntity.ok(loginResponse);
-
-		// try {
-		// 	LoginResponse loginResponse = authService.login(code);
-		//
-		// 	String frontendUrl = String.format(
-		// 		"http://localhost:3000/auth/callback?accessToken=%s&refreshToken=%s&isNewMember=%s&memberId=%s",
-		// 		loginResponse.getAccessToken(),
-		// 		loginResponse.getRefreshToken(),
-		// 		loginResponse.getIsNewMember(),
-		// 		loginResponse.getMemberId()
-		// 	);
-		//
-		// 	return ResponseEntity.status(HttpStatus.FOUND)
-		// 		.header("Location", frontendUrl)
-		// 		.build();
-		//
-		// } catch (Exception e) {
-		// 	log.error("카카오 로그인 콜백 처리 실패", e);
-		//
-		// 	String errorUrl = "http://localhost:3000/auth/error?message=" +
-		// 		java.net.URLEncoder.encode(e.getMessage(), StandardCharsets.UTF_8);
-		//
-		// 	return ResponseEntity.status(HttpStatus.FOUND)
-		// 		.header("Location", errorUrl)
-		// 		.build();
-		// }
 	}
 
 	/**
@@ -112,7 +86,7 @@ public class AuthController {
 
 	@PostMapping("/login/token")
 	public ResponseEntity<LoginResponse> loginWithKakaoToken(
-		@RequestBody KakaoTokenLoginRequest request) {
+		@Valid @RequestBody KakaoTokenLoginRequest request) {
 		log.info("카카오 SDK 토큰으로 로그인 요청");
 
 		LoginResponse response = authService.loginWithKakaoToken(request.getAccessToken());

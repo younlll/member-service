@@ -74,7 +74,7 @@ class OnboardingControllerTest {
 		mockMvc.perform(post("/api/onboarding/complete").contentType(MediaType.APPLICATION_JSON)
 				.content(objectMapper.writeValueAsString(validRequest)))
 			.andDo(print())
-			.andExpect(status().isOk())
+			.andExpect(status().isCreated())
 			.andExpect(jsonPath("$.memberId").value(1))
 			.andExpect(jsonPath("$.nickname").value("테스트유저"))
 			.andExpect(jsonPath("$.message").value("회원가입이 완료되었습니다"));

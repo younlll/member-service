@@ -1,5 +1,6 @@
 package com.yeolcheong.mub.member.controller;
 
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -37,6 +38,6 @@ public class OnboardingController {
 
 		OnboardingResponse onboardingResponse = onboardingService.completeOnboarding(memberId, request);
 
-		return ResponseEntity.ok(onboardingResponse);
+		return ResponseEntity.status(HttpStatus.CREATED).body(onboardingResponse);
 	}
 }
