@@ -2,6 +2,7 @@ package com.yeolcheong.mub.member.controller;
 
 import static org.mockito.BDDMockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 import java.util.List;
@@ -9,21 +10,23 @@ import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.context.annotation.Import;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.transaction.annotation.Transactional;
 
+import com.yeolcheong.mub.member.config.SecurityConfig;
 import com.yeolcheong.mub.member.domain.InterestOption;
 import com.yeolcheong.mub.member.domain.InterestType;
 import com.yeolcheong.mub.member.dto.InterestResponse;
+import com.yeolcheong.mub.member.security.JwtAuthenticationFilter;
+import com.yeolcheong.mub.member.security.JwtTokenProvider;
 import com.yeolcheong.mub.member.service.InterestService;
 
-@SpringBootTest
-@AutoConfigureMockMvc
-@Transactional
-@DisplayName("InterestController 테스트")
+@WebMvcTest(controllers = InterestController.class)
+@Import({SecurityConfig.class, JwtAuthenticationFilter.class})
+@DisplayName("InterestController slice tests")
 class InterestControllerTest {
 
 	@Autowired
@@ -32,10 +35,14 @@ class InterestControllerTest {
 	@MockitoBean
 	private InterestService interestService;
 
+	@MockitoBean
+	private JwtTokenProvider jwtTokenProvider;
+
 	@Test
-	@DisplayName("관심사 목록 조회 성공")
+	@DisplayName("GET /api/interests - returns full interest list")
+	@WithMockUser
 	void shouldGetInterests() throws Exception {
-		// Given
+		// given
 		List<InterestResponse> interests = List.of(InterestResponse.builder()
 			.interestType(InterestType.SELF_DEVELOPMENT)
 			.description("자기계발")
@@ -59,8 +66,9 @@ class InterestControllerTest {
 			.build());
 		given(interestService.getAllInterests()).willReturn(interests);
 
-		// When & Then
+		// when & then
 		mockMvc.perform(get("/api/interests"))
+			.andDo(print())
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$[0].interestType").value("SELF_DEVELOPMENT"))
 			.andExpect(jsonPath("$[0].description").value("자기계발"))

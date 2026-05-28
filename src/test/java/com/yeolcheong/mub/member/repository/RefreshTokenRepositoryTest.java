@@ -343,16 +343,15 @@ class RefreshTokenRepositoryTest {
 		}
 
 		@Test
-		@DisplayName("should return false when redis hasKey returns null")
-		void shouldReturnFalseWhenRedisHasKeyReturnsNull() {
+		@DisplayName("should throw NullPointerException when redis hasKey returns null (documents current unsafe behavior)")
+		void shouldThrowNpeWhenRedisHasKeyReturnsNull() {
 			// given — RedisTemplate.hasKey()는 null을 반환할 수 있음
 			given(redisTemplate.hasKey(MEMBER_KEY)).willReturn(null);
 
-			// when & then — NPE 없이 처리되는지 확인
+			// when & then — 현재 구현은 null 방어가 없어 NPE 발생
+			// TODO: Repository에 null 방어 로직 추가 후 false 반환으로 변경해야 함
 			assertThatThrownBy(() -> refreshTokenRepository.existsByMemberId(MEMBER_ID))
 				.isInstanceOf(NullPointerException.class);
-			// 만약 서비스에서 이 케이스를 방어해야 한다면
-			// Repository에 null 방어 로직 추가 후 assertThat(result).isFalse() 로 변경
 		}
 
 		@ParameterizedTest(name = "should check correct redis key for memberId={0}")

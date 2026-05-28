@@ -31,7 +31,7 @@ import com.yeolcheong.mub.member.service.AuthService;
 	SecurityConfig.class,
 	JwtAuthenticationFilter.class
 })
-@DisplayName("AuthController 테스트")
+@DisplayName("AuthController slice tests")
 class AuthControllerTest {
 
 	@Autowired
@@ -47,7 +47,7 @@ class AuthControllerTest {
 	private JwtTokenProvider jwtTokenProvider;
 
 	@Test
-	@DisplayName("로그인 URL을 정상 리턴한다")
+	@DisplayName("GET /api/auth/login/url - returns auth URL")
 	@WithMockUser
 	void shouldReturnLoginUrl() throws Exception {
 		// given
@@ -62,7 +62,7 @@ class AuthControllerTest {
 	}
 
 	@Test
-	@DisplayName("유효한 인가 코드로 로그인을 성공한다")
+	@DisplayName("POST /api/auth/login - returns 200 and tokens when code is valid")
 	@WithMockUser
 	void shouldLoginSuccessfully() throws Exception {
 		// given
@@ -94,7 +94,7 @@ class AuthControllerTest {
 	}
 
 	@Test
-	@DisplayName("인가코드가 없으면 400 에러를 반환한다")
+	@DisplayName("POST /api/auth/login - returns 400 when code is blank")
 	@WithMockUser
 	void shouldReturn400WhenCodeIsEmpty() throws Exception {
 		// given
@@ -114,7 +114,7 @@ class AuthControllerTest {
 	}
 
 	@Test
-	@DisplayName("카카오 API 호출 실패 시 500 에러를 반환한다")
+	@DisplayName("POST /api/auth/login - returns 500 when Kakao API call fails")
 	@WithMockUser
 	void shouldReturn500WhenKakaoApiFails() throws Exception {
 		// given

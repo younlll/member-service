@@ -18,7 +18,7 @@ import com.yeolcheong.mub.member.dto.DistrictResponse;
 import com.yeolcheong.mub.member.repository.DistrictRepository;
 
 @ExtendWith(MockitoExtension.class)
-@DisplayName("DistrictService 테스트")
+@DisplayName("DistrictService unit tests")
 class DistrictServiceTest {
 
 	@Mock
@@ -28,7 +28,7 @@ class DistrictServiceTest {
 	private DistrictService districtService;
 
 	@Test
-	@DisplayName("시/도 목록 조회 성공")
+	@DisplayName("getDistCode1List - returns province list mapped from repository result")
 	void shouldGetDistCode1ListSuccessfully() {
 		// Given
 		List<Object[]> mockData = Arrays.asList(
@@ -52,7 +52,7 @@ class DistrictServiceTest {
 	}
 
 	@Test
-	@DisplayName("구/시 목록 조회 성공")
+	@DisplayName("getDistCode2List - returns district list for given province code")
 	void shouldGetDistCode2ListSuccessfully() {
 		// Given
 		String distCode1 = "11";
@@ -86,7 +86,7 @@ class DistrictServiceTest {
 	}
 
 	@Test
-	@DisplayName("구/시 목록 조회 결과 없음")
+	@DisplayName("getDistCode2List - returns empty list when no districts match the province code")
 	void shouldReturnEmptyListWhenNoDistricts() {
 		// Given
 		String distCode1 = "99";
