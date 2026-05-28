@@ -3,19 +3,13 @@ package com.yeolcheong.mub.member.service;
 import java.time.LocalDateTime;
 import java.util.Optional;
 
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.util.LinkedMultiValueMap;
-import org.springframework.util.MultiValueMap;
-import org.springframework.web.reactive.function.client.WebClient;
-import org.springframework.web.reactive.function.client.WebClientResponseException;
 
-import com.yeolcheong.mub.member.config.KakaoProperties;
-import com.yeolcheong.mub.member.domain.SnsProvider;
+import com.yeolcheong.mub.member.client.KakaoClient;
 import com.yeolcheong.mub.member.domain.Member;
 import com.yeolcheong.mub.member.domain.RefreshToken;
+import com.yeolcheong.mub.member.domain.SnsProvider;
 import com.yeolcheong.mub.member.dto.LoginResponse;
 import com.yeolcheong.mub.member.dto.LoginTokenResponse;
 import com.yeolcheong.mub.member.dto.SnsUserInfoResponse;
@@ -34,51 +28,32 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class AuthService {
 
-	private final KakaoProperties kakaoProperties;
-	private final WebClient webClient;
-
+	private final KakaoClient kakaoClient;
 	private final JwtTokenProvider jwtTokenProvider;
-
 	private final MemberService memberService;
-
 	private final RefreshTokenRepository refreshTokenRepository;
 
 	public String getAuthUrl() {
-		return kakaoProperties.getAuthUrl() + "?client_id=" + kakaoProperties.getClientId() + "&redirect_uri="
-			+ kakaoProperties.getRedirectUri() + "&response_type=code";
+		return kakaoClient.buildAuthorizationUrl();
 	}
 
 	@Transactional
 	public LoginResponse login(String code) {
 		log.info("소셜 로그인 시작");
 
-		boolean isNewMember = false;
+		LoginTokenResponse loginTokenResponse = kakaoClient.fetchAccessToken(code);
+		SnsUserInfoResponse snsUserInfoResponse = kakaoClient.fetchUserInfo(loginTokenResponse.getAccessToken());
 
-		LoginTokenResponse loginTokenResponse = getAccessToken(code);
-		SnsUserInfoResponse snsUserInfoResponse = getKakaoUserInfo(loginTokenResponse);
+		return issueTokensForKakaoUser(snsUserInfoResponse);
+	}
 
-		Optional<Member> existingMemberInformation = memberService.findBySocialId(SnsProvider.KAKAO,
-			snsUserInfoResponse.getKakaoIdAsString());
+	@Transactional
+	public LoginResponse loginWithKakaoToken(String kakaoAccessToken) {
+		log.info("카카오 SDK 토큰 로그인 시작");
 
-		Member member;
-		if (existingMemberInformation.isEmpty()) {
-			isNewMember = true;
-			member = memberService.createdFromSnsUser(snsUserInfoResponse);
-			log.info("신규 회원 생성: memberId={}, socialId={}", member.getId(), member.getSocialId());
-		} else {
-			member = existingMemberInformation.get();
-			log.info("기존 회원 로그인: memberId={}, socialId={}", member.getId(), member.getSocialId());
-		}
+		SnsUserInfoResponse snsUserInfoResponse = kakaoClient.fetchUserInfo(kakaoAccessToken);
 
-		String accessToken = jwtTokenProvider.generateAccessToken(member.getId(), member.getSocialId(),
-			member.getSnsProvider().name());
-
-		String refreshToken = jwtTokenProvider.generateRefreshToken(member.getId());
-
-		saveRefreshToken(member.getId(), refreshToken);
-
-		return LoginResponse.of(accessToken, refreshToken, jwtTokenProvider.getAccessTokenExpiresIn(),
-			snsUserInfoResponse, isNewMember, String.valueOf(member.getId()));
+		return issueTokensForKakaoUser(snsUserInfoResponse);
 	}
 
 	@Transactional
@@ -125,6 +100,30 @@ public class AuthService {
 			.build();
 	}
 
+	private LoginResponse issueTokensForKakaoUser(SnsUserInfoResponse snsUserInfoResponse) {
+		Optional<Member> existingMember = memberService.findBySocialId(
+			SnsProvider.KAKAO, snsUserInfoResponse.getKakaoIdAsString());
+
+		boolean isNewMember = existingMember.isEmpty();
+		Member member;
+		if (isNewMember) {
+			member = memberService.createdFromSnsUser(snsUserInfoResponse);
+			log.info("신규 회원 생성: memberId={}, socialId={}", member.getId(), member.getSocialId());
+		} else {
+			member = existingMember.get();
+			log.info("기존 회원 로그인: memberId={}, socialId={}", member.getId(), member.getSocialId());
+		}
+
+		String accessToken = jwtTokenProvider.generateAccessToken(member.getId(), member.getSocialId(),
+			member.getSnsProvider().name());
+		String refreshToken = jwtTokenProvider.generateRefreshToken(member.getId());
+
+		saveRefreshToken(member.getId(), refreshToken);
+
+		return LoginResponse.of(accessToken, refreshToken, jwtTokenProvider.getAccessTokenExpiresIn(),
+			snsUserInfoResponse, isNewMember, String.valueOf(member.getId()));
+	}
+
 	private void saveRefreshToken(Long memberId, String token) {
 		long ttlSeconds = jwtTokenProvider.getRefreshTokenExpiresIn() / 1000;
 
@@ -136,137 +135,5 @@ public class AuthService {
 
 		refreshTokenRepository.save(refreshToken, ttlSeconds);
 		log.debug("Refresh Token 저장: memberId={}", memberId);
-	}
-
-	private SnsUserInfoResponse getKakaoUserInfo(LoginTokenResponse loginTokenResponse) {
-		log.info("카카오 사용자 정보 조회 시작");
-
-		try {
-			SnsUserInfoResponse snsUserInfoResponse = webClient.get()
-				.uri(kakaoProperties.getUserInfoUrl())
-				.header(HttpHeaders.AUTHORIZATION, "Bearer " + loginTokenResponse.getAccessToken())
-				.retrieve()
-				.bodyToMono(SnsUserInfoResponse.class)
-				.block();
-
-			if (snsUserInfoResponse == null) {
-				log.error("카카오 사용자 정보 응답이 null입니다");
-				throw new MemberServiceApiException("카카오 사용자 정보 응답이 없습니다.");
-			}
-
-			log.info("카카오 사용자 정보 조회 성공: kakaoId={}, email={}", snsUserInfoResponse.getId(),
-				snsUserInfoResponse.getKakaoAccount().getEmail());
-
-			return snsUserInfoResponse;
-		} catch (WebClientResponseException e) {
-			log.error("카카오 사용자 정보 조회 실패: status={}, body={}", e.getStatusCode(), e.getResponseBodyAsString());
-			if (e.getStatusCode().value() == 401) {
-				throw new MemberServiceApiException("유효하지 않은 카카오 토큰입니다", ErrorCode.INVALID_TOKEN);
-			} else {
-				throw new MemberServiceApiException("카카오 사용자 정보 조회에 실패했습니다", ErrorCode.EXTERNAL_API_ERROR);
-			}
-		} catch (Exception e) {
-			log.error("카카오 사용자 정보 조회 중 예외 발생", e);
-			throw new MemberServiceApiException("카카오 API 호출 중 오류가 발생했습니다", ErrorCode.EXTERNAL_API_ERROR);
-		}
-	}
-
-	private LoginTokenResponse getAccessToken(String code) {
-		log.info("로그인을 위한 Access Token 요청 시작");
-
-		MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
-		params.add("grant_type", "authorization_code");
-		params.add("client_id", kakaoProperties.getClientId());
-		params.add("redirect_uri", kakaoProperties.getRedirectUri());
-		params.add("code", code);
-
-		try {
-			LoginTokenResponse response = webClient.post()
-				.uri(kakaoProperties.getTokenUrl())
-				.contentType(MediaType.APPLICATION_FORM_URLENCODED)
-				.bodyValue(params)
-				.retrieve()
-				.bodyToMono(LoginTokenResponse.class)
-				.block();
-
-			if (response == null) {
-				log.error("카카오 토큰 응답이 null입니다");
-				throw new MemberServiceApiException("토큰 응답이 없습니다.", ErrorCode.EXTERNAL_API_ERROR);
-			}
-
-			log.info("로그인 Access Token 발급 성공");
-			return response;
-		} catch (WebClientResponseException e) {
-			log.error("Access Token 발급 실패: status={}, body={}", e.getStatusCode(), e.getResponseBodyAsString());
-			if (e.getStatusCode().value() == 400) {
-				throw new MemberServiceApiException(ErrorCode.INVALID_TOKEN_VALUE);
-			} else if (e.getStatusCode().value() == 401) {
-				throw new MemberServiceApiException("인증에 실패했습니다", ErrorCode.INVALID_TOKEN);
-			} else {
-				throw new MemberServiceApiException("카카오 토큰 발급에 실패했습니다", ErrorCode.EXTERNAL_API_ERROR);
-			}
-		} catch (Exception e) {
-			log.error("카카오 토큰 발급 중 예외 발생", e);
-			throw new MemberServiceApiException("카카오 API 호출 중 오류가 발생했습니다", ErrorCode.EXTERNAL_API_ERROR);
-		}
-	}
-
-	@Transactional
-	public LoginResponse loginWithKakaoToken(String kakaoAccessToken) {
-		log.info("카카오 SDK 토큰 로그인 시작");
-
-		boolean isNewMember = false;
-
-		// 기존 getKakaoUserInfo()를 LoginTokenResponse 없이 직접 호출
-		SnsUserInfoResponse snsUserInfoResponse = getKakaoUserInfoByToken(kakaoAccessToken);
-
-		Optional<Member> existingMember = memberService.findBySocialId(
-			SnsProvider.KAKAO, snsUserInfoResponse.getKakaoIdAsString());
-
-		Member member;
-		if (existingMember.isEmpty()) {
-			isNewMember = true;
-			member = memberService.createdFromSnsUser(snsUserInfoResponse);
-			log.info("신규 회원 생성: memberId={}", member.getId());
-		} else {
-			member = existingMember.get();
-			log.info("기존 회원 로그인: memberId={}", member.getId());
-		}
-
-		String accessToken = jwtTokenProvider.generateAccessToken(
-			member.getId(), member.getSocialId(), member.getSnsProvider().name());
-		String refreshToken = jwtTokenProvider.generateRefreshToken(member.getId());
-
-		saveRefreshToken(member.getId(), refreshToken);  // 기존 메서드 재사용
-
-		return LoginResponse.of(accessToken, refreshToken,
-			jwtTokenProvider.getAccessTokenExpiresIn(),
-			snsUserInfoResponse, isNewMember, String.valueOf(member.getId()));
-	}
-
-	// 카카오 토큰을 직접 받아 사용자 정보 조회 (기존 getKakaoUserInfo와 분리)
-	private SnsUserInfoResponse getKakaoUserInfoByToken(String kakaoAccessToken) {
-		try {
-			SnsUserInfoResponse response = webClient.get()
-				.uri(kakaoProperties.getUserInfoUrl())
-				.header(HttpHeaders.AUTHORIZATION, "Bearer " + kakaoAccessToken)
-				.retrieve()
-				.bodyToMono(SnsUserInfoResponse.class)
-				.block();
-
-			if (response == null) {
-				throw new MemberServiceApiException("카카오 사용자 정보 응답이 없습니다.");
-			}
-
-			log.info("카카오 사용자 정보 조회 성공: kakaoId={}", response.getId());
-			return response;
-
-		} catch (WebClientResponseException e) {
-			log.error("카카오 사용자 정보 조회 실패: status={}", e.getStatusCode());
-			if (e.getStatusCode().value() == 401) {
-				throw new MemberServiceApiException("유효하지 않은 카카오 토큰입니다", ErrorCode.INVALID_TOKEN);
-			}
-			throw new MemberServiceApiException("카카오 사용자 정보 조회 실패", ErrorCode.EXTERNAL_API_ERROR);
-		}
 	}
 }
