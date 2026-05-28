@@ -19,6 +19,7 @@ public enum ErrorCode {
 	INVALID_INTEREST_COUNT(HttpStatus.BAD_REQUEST, "E40007", "관심사는 1개 이상 3개 이하로 선택해야 합니다"),
 	INTEREST_OPTION_REQUIRED(HttpStatus.BAD_REQUEST, "E40008", "관심사별 옵션은 최소 1개 이상 선택해야 합니다"),
 	INVALID_INTEREST_OPTION(HttpStatus.BAD_REQUEST, "E40009", "해당 관심사에 유효하지 않은 옵션입니다"),
+	INVALID_DISTRICT_CODE(HttpStatus.BAD_REQUEST, "E40010", "유효하지 않은 지역 코드입니다"),
 
 	// 404 Not Found
 	MEMBER_NOT_FOUND(HttpStatus.NOT_FOUND, "E40401", "회원을 찾을 수 없습니다"),

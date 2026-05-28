@@ -9,8 +9,8 @@ import java.util.Optional;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.yeolcheong.mub.member.common.MemberStatus;
-import com.yeolcheong.mub.member.common.SnsProvider;
+import com.yeolcheong.mub.member.domain.MemberStatus;
+import com.yeolcheong.mub.member.domain.SnsProvider;
 import com.yeolcheong.mub.member.domain.Member;
 import com.yeolcheong.mub.member.dto.MemberInfoResponse;
 import com.yeolcheong.mub.member.dto.MemberSummaryResponse;
@@ -39,8 +39,9 @@ public class MemberService {
 		return memberRepository.findBySnsProviderAndSocialId(snsProvider, socialId);
 	}
 
+	@Transactional
 	public Member createdFromSnsUser(SnsUserInfoResponse snsUserInfoResponse) {
-		log.info("신규 회원 생성: snsId={}, email={}", snsUserInfoResponse.getId(), snsUserInfoResponse.getEmail());
+		log.info("Creating new member: snsId={}, email={}", snsUserInfoResponse.getId(), snsUserInfoResponse.getEmail());
 
 		Member member = Member.builder()
 			.snsProvider(SnsProvider.KAKAO)
@@ -51,21 +52,21 @@ public class MemberService {
 			.build();
 
 		Member saveMember = memberRepository.save(member);
-		log.info("신규 회원 생성 완료: memberId={}", saveMember.getId());
+		log.info("New member created: memberId={}", saveMember.getId());
 
 		return saveMember;
 	}
 
 	public MemberInfoResponse getMemberByEmail(String email) {
-		log.info("이메일로 회원 조회: email={}", email);
+		log.info("Looking up member by email: email={}", email);
 
 		Member member = memberRepository.findByEmail(email)
 			.orElseThrow(() -> {
-				log.warn("회원 조회 실패 - 존재하지 않는 이메일: email={}", email);
+				log.warn("Member lookup failed - email not found: email={}", email);
 				return new MemberServiceApiException("존재하지 않는 회원입니다.", ErrorCode.MEMBER_NOT_FOUND);
 			});
 
-		log.info("회원 조회 성공: memberId={}", member.getId());
+		log.info("Member lookup succeeded: memberId={}", member.getId());
 		return MemberInfoResponse.from(member);
 	}
 
@@ -78,13 +79,13 @@ public class MemberService {
 		if (memberIds == null || memberIds.isEmpty()) {
 			return Collections.emptyList();
 		}
-		log.info("회원 다건 조회: requestedSize={}", memberIds.size());
+		log.info("Bulk member lookup: requestedSize={}", memberIds.size());
 
 		List<MemberSummaryResponse> results = memberRepository.findAllById(memberIds).stream()
 			.map(MemberSummaryResponse::from)
 			.toList();
 
-		log.info("회원 다건 조회 완료: requestedSize={}, foundSize={}", memberIds.size(), results.size());
+		log.info("Bulk member lookup completed: requestedSize={}, foundSize={}", memberIds.size(), results.size());
 		return results;
 	}
 }

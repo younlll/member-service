@@ -21,8 +21,8 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import com.yeolcheong.mub.member.common.MemberStatus;
-import com.yeolcheong.mub.member.common.SnsProvider;
+import com.yeolcheong.mub.member.domain.MemberStatus;
+import com.yeolcheong.mub.member.domain.SnsProvider;
 import com.yeolcheong.mub.member.domain.District;
 import com.yeolcheong.mub.member.domain.InterestOption;
 import com.yeolcheong.mub.member.domain.InterestType;
@@ -404,7 +404,8 @@ class OnboardingServiceTest {
 			// when & then
 			assertThatThrownBy(() -> onboardingService.completeOnboarding(1L, buildValidRequest("닉네임", 1)))
 				.isInstanceOf(OnboardingServiceApiException.class)
-				.hasMessage("유효하지 않은 지역 코드입니다");
+				.extracting("errorCode")
+				.isEqualTo(ErrorCode.INVALID_DISTRICT_CODE);
 
 			then(memberInterestRepository).should(never()).save(any());
 			then(memberRepository).should(never()).save(any());

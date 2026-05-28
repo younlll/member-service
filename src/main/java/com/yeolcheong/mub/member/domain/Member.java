@@ -6,8 +6,8 @@ import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
-import com.yeolcheong.mub.member.common.MemberStatus;
-import com.yeolcheong.mub.member.common.SnsProvider;
+import com.yeolcheong.mub.member.domain.MemberStatus;
+import com.yeolcheong.mub.member.domain.SnsProvider;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;

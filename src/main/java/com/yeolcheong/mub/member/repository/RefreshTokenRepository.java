@@ -33,14 +33,14 @@ public class RefreshTokenRepository {
 		String tokenKey = generateTokenKey(token);
 		redisTemplate.opsForValue().set(tokenKey, String.valueOf(memberId), ttl);
 
-		log.debug("Refresh Token 저장: memberId={}, ttl={}초", memberId, ttlSeconds);
+		log.debug("Refresh token saved: memberId={}, ttl={}s", memberId, ttlSeconds);
 	}
 
 	public Optional<String> findByMemberId(Long memberId) {
 		String key = generateMemberKey(memberId);
 		String token = redisTemplate.opsForValue().get(key);
 
-		log.debug("Refresh Token 조회: memberid={}, found={}", memberId, token != null);
+		log.debug("Refresh token lookup: memberId={}, found={}", memberId, token != null);
 		return Optional.ofNullable(token);
 	}
 
@@ -49,16 +49,16 @@ public class RefreshTokenRepository {
 		String memberIdStr = redisTemplate.opsForValue().get(key);
 
 		if (memberIdStr == null) {
-			log.debug("Token으로 회원 ID를 찾지 못함");
+			log.debug("No member ID found for token");
 			return Optional.empty();
 		}
 
 		try {
 			Long memberId = Long.parseLong(memberIdStr);
-			log.debug("Token으로 회원 ID 찾음: memberId={}", memberId);
+			log.debug("Member ID found for token: memberId={}", memberId);
 			return Optional.of(memberId);
 		} catch (NumberFormatException e) {
-			log.error("회원 ID 파싱 실패: memberIdStr={}", memberIdStr, e);
+			log.error("Failed to parse member ID: memberIdStr={}", memberIdStr, e);
 			return Optional.empty();
 		}
 	}
@@ -73,7 +73,7 @@ public class RefreshTokenRepository {
 			String tokenKey = generateTokenKey(token);
 			redisTemplate.delete(tokenKey);
 		});
-		log.debug("Refresh Token 삭제: memberId={}", memberId);
+		log.debug("Refresh token deleted: memberId={}", memberId);
 	}
 
 	public boolean existsByMemberId(Long memberId) {

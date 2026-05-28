@@ -14,14 +14,14 @@ import com.yeolcheong.mub.member.domain.InterestType;
 import com.yeolcheong.mub.member.dto.InterestResponse;
 
 @ExtendWith(MockitoExtension.class)
-@DisplayName("InterestService 테스트")
+@DisplayName("InterestService unit tests")
 class InterestServiceTest {
 
 	@InjectMocks
 	private InterestService interestService;
 
 	@Test
-	@DisplayName("모든 관심사 목록 조회 성공한다")
+	@DisplayName("getAllInterests - returns one response per InterestType with description and options")
 	void shouldGetAllInterestsSuccessfully() {
 		// When
 		List<InterestResponse> result = interestService.getAllInterests();
@@ -41,7 +41,7 @@ class InterestServiceTest {
 	}
 
 	@Test
-	@DisplayName("자기계발 관심사의 옵션 확인")
+	@DisplayName("getAllInterests - SELF_DEVELOPMENT exposes expected description and options")
 	void shouldHaveCorrectOptionsForSelfDevelopment() {
 		// When
 		List<InterestResponse> result = interestService.getAllInterests();
@@ -56,7 +56,7 @@ class InterestServiceTest {
 	}
 
 	@Test
-	@DisplayName("운동/스포츠 관심사의 옵션 확인")
+	@DisplayName("getAllInterests - SPORTS exposes expected description and options")
 	void shouldHaveCorrectOptionsForSports() {
 		// When
 		List<InterestResponse> result = interestService.getAllInterests();

@@ -1,5 +1,6 @@
 package com.yeolcheong.mub.member.controller;
 
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -30,13 +31,13 @@ public class OnboardingController {
 	 */
 	@PostMapping("/complete")
 	public ResponseEntity<OnboardingResponse> completeOnboarding(@Valid @RequestBody OnboardingRequest request) {
-		log.info("회원가입 완료 요청: nickname={}", request.getNickname());
+		log.info("Onboarding complete requested: nickname={}", request.getNickname());
 
 		Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 		Long memberId = Long.valueOf(authentication.getName());
 
 		OnboardingResponse onboardingResponse = onboardingService.completeOnboarding(memberId, request);
 
-		return ResponseEntity.ok(onboardingResponse);
+		return ResponseEntity.status(HttpStatus.CREATED).body(onboardingResponse);
 	}
 }

@@ -3,7 +3,6 @@ package com.yeolcheong.mub.member.service;
 import java.util.List;
 
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import com.yeolcheong.mub.member.dto.InterestResponse;
 
@@ -12,12 +11,11 @@ import lombok.extern.slf4j.Slf4j;
 
 @Service
 @RequiredArgsConstructor
-@Transactional(readOnly = true)
 @Slf4j
 public class InterestService {
 
 	public List<InterestResponse> getAllInterests() {
-		log.debug("관심사 목록 조회");
+		log.debug("Fetching interest list");
 		return InterestResponse.getAllInterests();
 	}
 }

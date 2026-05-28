@@ -27,7 +27,7 @@ public class MemberController {
 	@GetMapping
 	public ResponseEntity<MemberInfoResponse> getMemberByEmail(
 		@RequestParam String email) {
-		log.info("이메일로 회원 조회 요청: email={}", email);
+		log.info("Member lookup by email requested: email={}", email);
 
 		MemberInfoResponse response = memberService.getMemberByEmail(email);
 		return ResponseEntity.ok(response);

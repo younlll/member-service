@@ -28,7 +28,7 @@ public class DistrictController {
 	 */
 	@GetMapping("/code1")
 	public ResponseEntity<List<DistrictResponse.DistCode1>> getDistCode1List() {
-		log.debug("시/도 목록 조회 요청");
+		log.debug("Fetching province list");
 
 		List<DistrictResponse.DistCode1> response = districtService.getDistCode1List();
 
@@ -41,7 +41,7 @@ public class DistrictController {
 	 */
 	@GetMapping("/code2")
 	public ResponseEntity<List<DistrictResponse.DistCode2>> getDistCode2List(@RequestParam String distCode1) {
-		log.debug("시/군/구 목록 조회 요청: distCode1={}", distCode1);
+		log.debug("Fetching district list: distCode1={}", distCode1);
 
 		List<DistrictResponse.DistCode2> responses = districtService.getDistCode2List(distCode1);
 		return ResponseEntity.ok(responses);

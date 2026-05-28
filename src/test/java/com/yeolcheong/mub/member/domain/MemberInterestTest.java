@@ -5,14 +5,14 @@ import static org.assertj.core.api.Assertions.*;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-import com.yeolcheong.mub.member.common.MemberStatus;
-import com.yeolcheong.mub.member.common.SnsProvider;
+import com.yeolcheong.mub.member.domain.MemberStatus;
+import com.yeolcheong.mub.member.domain.SnsProvider;
 
-@DisplayName("MemberInterest 테스트")
+@DisplayName("MemberInterest")
 class MemberInterestTest {
 
 	@Test
-	@DisplayName("옵션 추가 성공")
+	@DisplayName("addOption - stores options when added")
 	void shouldAddOption() {
 		// Given
 		Member member = Member.builder()
@@ -41,7 +41,7 @@ class MemberInterestTest {
 	}
 
 	@Test
-	@DisplayName("중복 옵션 추가 시 무시")
+	@DisplayName("addOption - ignores duplicate options")
 	void shouldIgnoreDuplicateOption() {
 		// Given
 		Member member = Member.builder()
@@ -66,7 +66,7 @@ class MemberInterestTest {
 	}
 
 	@Test
-	@DisplayName("빈 옵션 리스트로 시작")
+	@DisplayName("addOption - starts with empty option list")
 	void shouldStartWithEmptyOptions() {
 		// Given
 		Member member = Member.builder()
@@ -86,7 +86,7 @@ class MemberInterestTest {
 	}
 
 	@Test
-	@DisplayName("여러 옵션 추가 성공")
+	@DisplayName("addOption - stores all options when multiple options are added")
 	void shouldAddMultipleOptions() {
 		// Given
 		Member member = Member.builder()

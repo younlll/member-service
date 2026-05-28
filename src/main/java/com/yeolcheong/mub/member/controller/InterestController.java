@@ -27,7 +27,7 @@ public class InterestController {
 	 */
 	@GetMapping
 	public ResponseEntity<List<InterestResponse>> getAllInterests() {
-		log.debug("관심사 목록 조회 요청");
+		log.debug("Fetching interest list");
 
 		List<InterestResponse> responses = interestService.getAllInterests();
 

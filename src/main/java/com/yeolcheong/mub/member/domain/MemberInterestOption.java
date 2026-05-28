@@ -50,6 +50,5 @@ public class MemberInterestOption {
 	public MemberInterestOption(MemberInterest memberInterest, InterestOption optionType) {
 		this.memberInterest = memberInterest;
 		this.optionType = optionType;
-		this.createdAt = LocalDateTime.now();
 	}
 }

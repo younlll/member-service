@@ -14,11 +14,10 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import com.yeolcheong.mub.member.config.SecurityConfig;
-import com.yeolcheong.mub.member.controller.TestController;
 
-@WebMvcTest(TestController.class)
+@WebMvcTest(AuthProbeController.class)
 @Import({SecurityConfig.class, JwtAuthenticationFilter.class})
-@DisplayName("JwtAuthenticationFilter 테스트")
+@DisplayName("JwtAuthenticationFilter slice tests")
 class JwtAuthenticationFilterTest {
 
 	@Autowired
@@ -28,7 +27,7 @@ class JwtAuthenticationFilterTest {
 	private JwtTokenProvider jwtTokenProvider;
 
 	@Test
-	@DisplayName("유효한 JWT 토큰으로 인증에 성공한다")
+	@DisplayName("should authenticate request when JWT token is valid")
 	void shouldAuthenticateWithValidToken() throws Exception {
 		// given
 		String token = "valid-jwt-token";
@@ -41,18 +40,18 @@ class JwtAuthenticationFilterTest {
 		mockMvc.perform(get("/api/test/protected").header("Authorization", "Bearer " + token))
 			.andDo(print())
 			.andExpect(status().isOk())
-			.andExpect(content().string("인증 성공! 회원 ID: " + memberId));
+			.andExpect(content().string("authenticated:" + memberId));
 	}
 
 	@Test
-	@DisplayName("JWT 토큰이 없으면 403 에러를 반환한다")
+	@DisplayName("should return 403 when JWT token is missing")
 	void shouldReturn403WithoutToken() throws Exception {
 		// when & then
 		mockMvc.perform(get("/api/test/protected")).andDo(print()).andExpect(status().isForbidden());
 	}
 
 	@Test
-	@DisplayName("유효하지 않은 JWT 토큰으로 403 에러를 반환한다")
+	@DisplayName("should return 403 when JWT token is invalid")
 	void shouldReturn403WithInvalidToken() throws Exception {
 		// given
 		String invalidToken = "invalid-token";

@@ -2,22 +2,37 @@ package com.yeolcheong.mub.member.security;
 
 import static org.assertj.core.api.AssertionsForClassTypes.*;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.junit.jupiter.MockitoExtension;
 
-import com.yeolcheong.mub.member.common.SnsProvider;
+import com.yeolcheong.mub.member.domain.SnsProvider;
 
-@SpringBootTest
-@DisplayName("JwtTokenProvider 테스트")
+@ExtendWith(MockitoExtension.class)
+@DisplayName("JwtTokenProvider unit tests")
 class JwtTokenProviderTest {
 
-	@Autowired
+	private static final String TEST_SECRET =
+		"test-secret-key-for-unit-tests-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+	private static final long ACCESS_TOKEN_EXPIRATION_MS = 86_400_000L; // 1 day
+	private static final long REFRESH_TOKEN_EXPIRATION_MS = 1_209_600_000L; // 14 days
+
 	private JwtTokenProvider jwtTokenProvider;
 
+	@BeforeEach
+	void setUp() {
+		// pure Mockito 환경에서 JwtProperties를 수동으로 구성
+		JwtProperties jwtProperties = new JwtProperties();
+		jwtProperties.setSecret(TEST_SECRET);
+		jwtProperties.setAccessTokenExpiration(ACCESS_TOKEN_EXPIRATION_MS);
+		jwtProperties.setRefreshTokenExpiration(REFRESH_TOKEN_EXPIRATION_MS);
+		jwtTokenProvider = new JwtTokenProvider(jwtProperties);
+	}
+
 	@Test
-	@DisplayName("Access Token을 생성한다")
+	@DisplayName("generateAccessToken - returns three-segment JWT")
 	void shouldGenerateAccessToken() {
 		// given
 		Long memberId = 1L;
@@ -34,7 +49,7 @@ class JwtTokenProviderTest {
 	}
 
 	@Test
-	@DisplayName("Refresh Token을 생성한다")
+	@DisplayName("generateRefreshToken - returns three-segment JWT")
 	void shouldGenerateRefreshToken() {
 		// given
 		Long memberId = 1L;
@@ -49,7 +64,7 @@ class JwtTokenProviderTest {
 	}
 
 	@Test
-	@DisplayName("토큰 유효성 검증을 성공한다")
+	@DisplayName("validateToken - returns true for token signed with same secret")
 	void shouldSuccessToValidateToken() {
 		// given
 		Long memberId = 1L;
@@ -64,7 +79,7 @@ class JwtTokenProviderTest {
 	}
 
 	@Test
-	@DisplayName("올바르지 않은 토큰의 경우 유효성 검증을 실패한다")
+	@DisplayName("validateToken - returns false for malformed token")
 	void shouldFailToValidateInvalidToken() {
 		// given
 		String invalidToken = "invalid.token.signature";
@@ -77,7 +92,7 @@ class JwtTokenProviderTest {
 	}
 
 	@Test
-	@DisplayName("토큰에서 회원ID를 정상적으로 추출할 수 있다")
+	@DisplayName("getMemberIdFromToken - extracts member id from access token subject")
 	void shouldExtractMemberIdFromToken() {
 		// given
 		Long memberId = 1L;
@@ -92,7 +107,7 @@ class JwtTokenProviderTest {
 	}
 
 	@Test
-	@DisplayName("Access Toekn과 Refresh Token의 만료시간이 다르다")
+	@DisplayName("generateAccessToken vs generateRefreshToken - produces different tokens")
 	void shouldHaveDifferentExpirationTimes() {
 		// given
 		Long memberId = 1L;
@@ -107,13 +122,13 @@ class JwtTokenProviderTest {
 	}
 
 	@Test
-	@DisplayName("Access Token 만료 시간을 초 단위로 정상 반환한다")
+	@DisplayName("getAccessTokenExpiresIn - returns configured expiration in seconds")
 	void shouldReturnAccessTokenExpiresInSeconds() {
 		// when
 		Long expireIn = jwtTokenProvider.getAccessTokenExpiresIn();
 
 		// then
 		assertThat(expireIn).isPositive();
-		assertThat(expireIn).isEqualTo(86400L);
+		assertThat(expireIn).isEqualTo(ACCESS_TOKEN_EXPIRATION_MS / 1000);
 	}
 }

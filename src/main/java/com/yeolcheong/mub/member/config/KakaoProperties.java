@@ -1,4 +1,4 @@
-package com.yeolcheong.mub.member.common;
+package com.yeolcheong.mub.member.config;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;

@@ -38,7 +38,7 @@ public class AuthController {
 	 */
 	@GetMapping("/login/url")
 	public ResponseEntity<Map<String, String>> getAuthUrl() {
-		log.info("로그인 URL 요청");
+		log.info("Login URL requested");
 
 		String authUrl = authService.getAuthUrl();
 		Map<String, String> response = new HashMap<>();
@@ -51,38 +51,12 @@ public class AuthController {
 	 * GET /api/auth/kakao/callback
 	 */
 	@GetMapping("/kakao/callback")
-	public ResponseEntity<?> kakaoCallback(@RequestParam String code) {
-		log.info("카카오 콜백 수신: code={}", code);
+	public ResponseEntity<LoginResponse> kakaoCallback(@RequestParam String code) {
+		log.info("Kakao callback received");
 
 		LoginResponse loginResponse = authService.login(code);
 
 		return ResponseEntity.ok(loginResponse);
-
-		// try {
-		// 	LoginResponse loginResponse = authService.login(code);
-		//
-		// 	String frontendUrl = String.format(
-		// 		"http://localhost:3000/auth/callback?accessToken=%s&refreshToken=%s&isNewMember=%s&memberId=%s",
-		// 		loginResponse.getAccessToken(),
-		// 		loginResponse.getRefreshToken(),
-		// 		loginResponse.getIsNewMember(),
-		// 		loginResponse.getMemberId()
-		// 	);
-		//
-		// 	return ResponseEntity.status(HttpStatus.FOUND)
-		// 		.header("Location", frontendUrl)
-		// 		.build();
-		//
-		// } catch (Exception e) {
-		// 	log.error("카카오 로그인 콜백 처리 실패", e);
-		//
-		// 	String errorUrl = "http://localhost:3000/auth/error?message=" +
-		// 		java.net.URLEncoder.encode(e.getMessage(), StandardCharsets.UTF_8);
-		//
-		// 	return ResponseEntity.status(HttpStatus.FOUND)
-		// 		.header("Location", errorUrl)
-		// 		.build();
-		// }
 	}
 
 	/**
@@ -94,7 +68,7 @@ public class AuthController {
 	 */
 	@PostMapping("/login")
 	public ResponseEntity<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
-		log.info("카카오 로그인 API 호출: code={}", request.getCode());
+		log.info("Kakao login API called");
 
 		LoginResponse response = authService.login(request.getCode());
 
@@ -103,7 +77,7 @@ public class AuthController {
 
 	@PostMapping("/refresh")
 	public ResponseEntity<TokenRefreshResponse> refreshToken(@Valid @RequestBody TokenRefreshRequest request) {
-		log.info("Access Token 재발급 요청");
+		log.info("Access token refresh requested");
 
 		TokenRefreshResponse response = authService.refreshAccessToken(request.getRefreshToken());
 
@@ -112,8 +86,8 @@ public class AuthController {
 
 	@PostMapping("/login/token")
 	public ResponseEntity<LoginResponse> loginWithKakaoToken(
-		@RequestBody KakaoTokenLoginRequest request) {
-		log.info("카카오 SDK 토큰으로 로그인 요청");
+		@Valid @RequestBody KakaoTokenLoginRequest request) {
+		log.info("Login requested with Kakao SDK token");
 
 		LoginResponse response = authService.loginWithKakaoToken(request.getAccessToken());
 		return ResponseEntity.ok(response);

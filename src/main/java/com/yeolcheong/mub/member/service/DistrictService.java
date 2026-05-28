@@ -21,7 +21,7 @@ public class DistrictService {
 	private final DistrictRepository districtRepository;
 
 	public List<DistrictResponse.DistCode1> getDistCode1List() {
-		log.debug("시/도 목록 조회");
+		log.debug("Fetching province list");
 
 		List<Object[]> results = districtRepository.findDistinctDistCode1();
 
@@ -34,7 +34,7 @@ public class DistrictService {
 	}
 
 	public List<DistrictResponse.DistCode2> getDistCode2List(String distCode1) {
-		log.debug("구/시 목록 조회: distCode1={}", distCode1);
+		log.debug("Fetching district list: distCode1={}", distCode1);
 
 		List<District> districts = districtRepository.findByDistCode1(distCode1);
 
