@@ -37,6 +37,7 @@ public class OnboardingService {
 	private final MemberTermsAgreementRepository memberTermsAgreementRepository;
 	private final DistrictRepository districtRepository;
 	private final MemberInterestRepository memberInterestRepository;
+	private final CouponService couponService;
 
 	@Transactional
 	public OnboardingResponse completeOnboarding(Long memberId, OnboardingRequest onboardingRequest) {
@@ -67,7 +68,23 @@ public class OnboardingService {
 		member.updateMemberState(MemberStatus.ACTIVE);
 		memberRepository.save(member);
 
+		// 8. 가입 축하 활동이용권 발급 — 실패해도 가입은 완료(별도 트랜잭션)
+		issueWelcomeVoucher(member.getId());
+
 		return OnboardingResponse.of(member.getId(), member.getNickname());
+	}
+
+	/**
+	 * 가입 축하 활동이용권 발급.
+	 * 축하 선물이므로 발급에 실패하더라도 회원가입은 정상 완료되어야 한다.
+	 * 발급은 별도 트랜잭션(REQUIRES_NEW)에서 처리되고, 실패는 로그만 남긴다.
+	 */
+	private void issueWelcomeVoucher(Long memberId) {
+		try {
+			couponService.issueWelcomeVoucher(memberId);
+		} catch (Exception e) {
+			log.error("Failed to issue welcome voucher: memberId={}", memberId, e);
+		}
 	}
 
 	/**
