@@ -52,6 +52,8 @@ class OnboardingServiceTest {
 	private DistrictRepository districtRepository;
 	@Mock
 	private MemberInterestRepository memberInterestRepository;
+	@Mock
+	private CouponService couponService;
 
 	@InjectMocks
 	private OnboardingService onboardingService;
@@ -295,6 +297,34 @@ class OnboardingServiceTest {
 			var inOrder = inOrder(memberInterestRepository);
 			inOrder.verify(memberInterestRepository).deleteByMemberId(1L);
 			inOrder.verify(memberInterestRepository, times(2)).save(any(MemberInterest.class));
+		}
+
+		@Test
+		@DisplayName("should issue welcome activity voucher after onboarding completes")
+		void shouldIssueWelcomeVoucherAfterOnboarding() {
+			// given
+			setupCommonMocks();
+
+			// when
+			onboardingService.completeOnboarding(1L, buildValidRequest("닉네임", 1));
+
+			// then
+			then(couponService).should(times(1)).issueWelcomeVoucher(1L);
+		}
+
+		@Test
+		@DisplayName("should complete onboarding even when welcome voucher issuance fails")
+		void shouldCompleteOnboardingEvenWhenVoucherIssuanceFails() {
+			// given
+			setupCommonMocks();
+			given(couponService.issueWelcomeVoucher(1L)).willThrow(new RuntimeException("issue failed"));
+
+			// when
+			OnboardingResponse response = onboardingService.completeOnboarding(1L, buildValidRequest("닉네임", 1));
+
+			// then — 쿠폰 발급 실패가 가입을 막지 않는다
+			assertThat(response).isNotNull();
+			assertThat(inactiveMember.getStatus()).isEqualTo(MemberStatus.ACTIVE);
 		}
 	}
 
