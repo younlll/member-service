@@ -90,4 +90,25 @@ public class Member {
 	public void updateMemberState(MemberStatus status) {
 		this.status = status;
 	}
+
+	/**
+	 * 프로필 이미지를 연결한다(등록/수정).
+	 */
+	public void assignImage(Long imageId) {
+		this.imageId = imageId;
+	}
+
+	/**
+	 * 프로필 이미지 연결을 해제한다(삭제 → 기본 이미지).
+	 */
+	public void removeImage() {
+		this.imageId = null;
+	}
+
+	/**
+	 * 조회 응답용 공개 이미지 URL(비영속 필드)을 바인딩한다.
+	 */
+	public void bindImageUrl(String imageUrl) {
+		this.imageUrl = imageUrl;
+	}
 }

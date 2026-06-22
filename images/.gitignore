@@ -1,0 +1,5 @@
+# 업로드되는 프로필 이미지(런타임 생성)는 버전 관리하지 않는다.
+# 기본 이미지(default.png)만 추적한다.
+profile/*
+!profile/default.png
+!.gitignore
