@@ -37,6 +37,7 @@ import com.yeolcheong.mub.member.exception.MemberServiceApiException;
 import com.yeolcheong.mub.member.exception.OnboardingServiceApiException;
 import com.yeolcheong.mub.member.repository.DistrictRepository;
 import com.yeolcheong.mub.member.repository.MemberInterestRepository;
+import com.yeolcheong.mub.member.repository.MemberProfileImageRepository;
 import com.yeolcheong.mub.member.repository.MemberRepository;
 import com.yeolcheong.mub.member.repository.MemberTermsAgreementRepository;
 
@@ -52,6 +53,8 @@ class OnboardingServiceTest {
 	private DistrictRepository districtRepository;
 	@Mock
 	private MemberInterestRepository memberInterestRepository;
+	@Mock
+	private MemberProfileImageRepository memberProfileImageRepository;
 
 	@InjectMocks
 	private OnboardingService onboardingService;
