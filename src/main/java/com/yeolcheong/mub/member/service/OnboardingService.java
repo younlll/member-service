@@ -12,6 +12,7 @@ import com.yeolcheong.mub.member.domain.InterestOption;
 import com.yeolcheong.mub.member.domain.InterestType;
 import com.yeolcheong.mub.member.domain.Member;
 import com.yeolcheong.mub.member.domain.MemberInterest;
+import com.yeolcheong.mub.member.domain.MemberProfileImage;
 import com.yeolcheong.mub.member.domain.MemberTermsAgreement;
 import com.yeolcheong.mub.member.domain.TermsType;
 import com.yeolcheong.mub.member.dto.OnboardingRequest;
@@ -21,6 +22,7 @@ import com.yeolcheong.mub.member.exception.MemberServiceApiException;
 import com.yeolcheong.mub.member.exception.OnboardingServiceApiException;
 import com.yeolcheong.mub.member.repository.DistrictRepository;
 import com.yeolcheong.mub.member.repository.MemberInterestRepository;
+import com.yeolcheong.mub.member.repository.MemberProfileImageRepository;
 import com.yeolcheong.mub.member.repository.MemberRepository;
 import com.yeolcheong.mub.member.repository.MemberTermsAgreementRepository;
 
@@ -37,6 +39,7 @@ public class OnboardingService {
 	private final MemberTermsAgreementRepository memberTermsAgreementRepository;
 	private final DistrictRepository districtRepository;
 	private final MemberInterestRepository memberInterestRepository;
+	private final MemberProfileImageRepository memberProfileImageRepository;
 	private final CouponService couponService;
 
 	@Transactional
@@ -64,14 +67,41 @@ public class OnboardingService {
 		// 6. 관심사 저장
 		saveInterests(member, onboardingRequest.getInterests());
 
-		// 7. 온보딩 완료 처리
+		// 7. 프로필 이미지 등록(선택)
+		registerProfileImage(member, onboardingRequest.getProfileImagePath());
+
+		// 8. 온보딩 완료 처리
 		member.updateMemberState(MemberStatus.ACTIVE);
 		memberRepository.save(member);
 
-		// 8. 가입 축하 활동이용권 발급 — 실패해도 가입은 완료(별도 트랜잭션)
+		// 9. 가입 축하 활동이용권 발급 — 실패해도 가입은 완료(별도 트랜잭션)
 		issueWelcomeVoucher(member.getId());
 
 		return OnboardingResponse.of(member.getId(), member.getNickname());
+	}
+
+	/**
+	 * 프로필 이미지 등록(선택).
+	 * <p>
+	 * 사전 업로드로 받은 스토리지 중립 상대 경로가 전달되면 이미지 행을 생성하고 회원에 연결한다.
+	 * 경로가 없으면 기본 이미지를 사용한다(미연결).
+	 */
+	private void registerProfileImage(Member member, String profileImagePath) {
+		if (profileImagePath == null || profileImagePath.isBlank()) {
+			return;
+		}
+
+		String relativePath = profileImagePath.strip();
+		String storedFileName = relativePath.substring(relativePath.lastIndexOf('/') + 1);
+
+		MemberProfileImage image = MemberProfileImage.builder()
+			.storedFileName(storedFileName)
+			.filePath(relativePath)
+			.build();
+		MemberProfileImage saved = memberProfileImageRepository.save(image);
+
+		member.assignImage(saved.getId());
+		log.debug("Profile image linked on onboarding: memberId={}, imageId={}", member.getId(), saved.getId());
 	}
 
 	/**

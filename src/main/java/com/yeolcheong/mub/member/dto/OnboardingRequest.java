@@ -44,6 +44,11 @@ public class OnboardingRequest {
 	@Valid
 	private List<InterestRequest> interests;
 
+	// 프로필 이미지 경로(선택). 사전 업로드로 받은 스토리지 중립 상대 경로(예: profile/uuid.png).
+	// null/blank 이면 기본 이미지를 사용한다.
+	@Size(max = 500, message = "프로필 이미지 경로가 너무 깁니다")
+	private String profileImagePath;
+
 	/**
 	 * 약관 동의 DTO
 	 */
