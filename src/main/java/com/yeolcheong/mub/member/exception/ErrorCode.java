@@ -25,7 +25,6 @@ public enum ErrorCode {
 	MEMBER_NOT_FOUND(HttpStatus.NOT_FOUND, "E40401", "회원을 찾을 수 없습니다"),
 
 	// 409 Conflict
-	DUPLICATE_NICKNAME(HttpStatus.CONFLICT, "E40901", "이미 사용 중인 닉네임입니다"),
 	DUPLICATE_EMAIL(HttpStatus.CONFLICT, "E40902", "이미 사용 중인 이메일입니다"),
 
 	// 500 Internal Server Error
