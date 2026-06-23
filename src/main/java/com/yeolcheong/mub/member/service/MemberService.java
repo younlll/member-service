@@ -1,22 +1,34 @@
 package com.yeolcheong.mub.member.service;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.yeolcheong.mub.member.domain.District;
+import com.yeolcheong.mub.member.domain.InterestOption;
+import com.yeolcheong.mub.member.domain.InterestType;
+import com.yeolcheong.mub.member.domain.Member;
+import com.yeolcheong.mub.member.domain.MemberInterest;
 import com.yeolcheong.mub.member.domain.MemberStatus;
 import com.yeolcheong.mub.member.domain.SnsProvider;
-import com.yeolcheong.mub.member.domain.Member;
 import com.yeolcheong.mub.member.dto.MemberInfoResponse;
 import com.yeolcheong.mub.member.dto.MemberSummaryResponse;
+import com.yeolcheong.mub.member.dto.ProfileResponse;
+import com.yeolcheong.mub.member.dto.ProfileUpdateRequest;
 import com.yeolcheong.mub.member.dto.SnsUserInfoResponse;
 import com.yeolcheong.mub.member.exception.ErrorCode;
 import com.yeolcheong.mub.member.exception.MemberServiceApiException;
+import com.yeolcheong.mub.member.repository.DistrictRepository;
+import com.yeolcheong.mub.member.repository.MemberInterestRepository;
 import com.yeolcheong.mub.member.repository.MemberRepository;
 import com.yeolcheong.mub.member.repository.RefreshTokenRepository;
 
@@ -31,6 +43,8 @@ public class MemberService {
 
 	private final MemberRepository memberRepository;
 	private final RefreshTokenRepository refreshTokenRepository;
+	private final DistrictRepository districtRepository;
+	private final MemberInterestRepository memberInterestRepository;
 
 	public Member findById(Long memberId) {
 		return memberRepository.findById(memberId)
@@ -58,6 +72,100 @@ public class MemberService {
 		refreshTokenRepository.deleteByMemberId(memberId);
 
 		log.info("Member withdrawn: memberId={}", memberId);
+	}
+
+	/**
+	 * 내 프로필 조회 (닉네임/한줄소개/지역/관심사 포함).
+	 */
+	public ProfileResponse getMyProfile(Long memberId) {
+		log.info("Profile retrieval requested: memberId={}", memberId);
+
+		Member member = findById(memberId);
+		List<MemberInterest> interests = memberInterestRepository.findAllByMemberId(memberId);
+
+		return ProfileResponse.from(member, interests);
+	}
+
+	/**
+	 * 내 프로필 수정 (닉네임, 한줄소개, 활동 지역, 관심사).
+	 */
+	@Transactional
+	public ProfileResponse updateProfile(Long memberId, ProfileUpdateRequest request) {
+		log.info("Profile update requested: memberId={}", memberId);
+
+		Member member = findById(memberId);
+		if (MemberStatus.DELETED.equals(member.getStatus())) {
+			throw new MemberServiceApiException(ErrorCode.MEMBER_NOT_FOUND);
+		}
+
+		member.updateNickname(request.getNickname());
+		member.updateBio(request.getBio());
+
+		District district = districtRepository.findByDistCode1AndDistCode2(
+				request.getDistCode1(), request.getDistCode2())
+			.orElseThrow(() -> new MemberServiceApiException(ErrorCode.INVALID_DISTRICT_CODE));
+		member.updateRegion(district.getDistCode1Name(), district.getDistCode2Name());
+
+		List<MemberInterest> savedInterests = replaceInterests(member, request.getInterests());
+		memberRepository.save(member);
+
+		log.info("Profile update succeeded: memberId={}", memberId);
+		return ProfileResponse.from(member, savedInterests);
+	}
+
+	/**
+	 * 관심사 목록을 요청값으로 교체한다. 요청에 없는 기존 관심사는 삭제하고,
+	 * 있는 항목은 옵션을 갱신하며, 새 항목은 생성한다.
+	 */
+	private List<MemberInterest> replaceInterests(Member member, List<ProfileUpdateRequest.InterestRequest> requests) {
+		List<MemberInterest> existing = memberInterestRepository.findAllByMemberId(member.getId());
+		Map<InterestType, MemberInterest> existingMap = existing.stream()
+			.collect(Collectors.toMap(MemberInterest::getInterestType, mi -> mi));
+
+		Set<InterestType> requestedTypes = requests.stream()
+			.map(ProfileUpdateRequest.InterestRequest::getInterestType)
+			.collect(Collectors.toSet());
+
+		existing.stream()
+			.filter(mi -> !requestedTypes.contains(mi.getInterestType()))
+			.forEach(memberInterestRepository::delete);
+
+		List<MemberInterest> result = new ArrayList<>();
+		for (ProfileUpdateRequest.InterestRequest request : requests) {
+			validateInterestOptions(request.getInterestType(), request.getOptions());
+
+			MemberInterest interest = existingMap.get(request.getInterestType());
+			if (interest != null) {
+				interest.replaceOptions(request.getOptions());
+			} else {
+				interest = MemberInterest.builder()
+					.member(member)
+					.interestType(request.getInterestType())
+					.build();
+				request.getOptions().forEach(interest::addOption);
+			}
+			result.add(memberInterestRepository.save(interest));
+		}
+		return result;
+	}
+
+	/**
+	 * 관심사 옵션 유효성 검사 (최소 1개 + 해당 관심사 허용 옵션 여부).
+	 */
+	private void validateInterestOptions(InterestType interestType, List<InterestOption> options) {
+		if (options == null || options.isEmpty()) {
+			throw new MemberServiceApiException("관심사별 옵션은 최소 1개 이상 선택해야 합니다", ErrorCode.INTEREST_OPTION_REQUIRED);
+		}
+
+		List<InterestOption> available = interestType.getAvailableOptions();
+		for (InterestOption option : options) {
+			if (!available.contains(option)) {
+				throw new MemberServiceApiException(
+					String.format("'%s' 관심사에는 '%s' 옵션을 선택할 수 없습니다",
+						interestType.getDescription(), option.getDescription()),
+					ErrorCode.INVALID_INTEREST_OPTION);
+			}
+		}
 	}
 
 	public Optional<Member> findBySocialId(SnsProvider snsProvider, String socialId) {

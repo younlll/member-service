@@ -50,6 +50,9 @@ public class Member {
 	@Column(length = 100)
 	private String nickname;
 
+	@Column(length = 100)
+	private String bio;
+
 	@Column
 	private Long imageId;
 
@@ -80,6 +83,10 @@ public class Member {
 
 	public void updateNickname(String nickname) {
 		this.nickname = nickname;
+	}
+
+	public void updateBio(String bio) {
+		this.bio = bio;
 	}
 
 	public void updateRegion(String regionProvince, String regionCity) {
