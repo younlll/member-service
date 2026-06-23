@@ -31,6 +31,7 @@ import com.yeolcheong.mub.member.dto.SnsUserInfoResponse;
 import com.yeolcheong.mub.member.exception.ErrorCode;
 import com.yeolcheong.mub.member.exception.MemberServiceApiException;
 import com.yeolcheong.mub.member.repository.MemberRepository;
+import com.yeolcheong.mub.member.repository.RefreshTokenRepository;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("MemberService")
@@ -38,6 +39,8 @@ class MemberServiceTest {
 
 	@Mock
 	private MemberRepository memberRepository;
+	@Mock
+	private RefreshTokenRepository refreshTokenRepository;
 
 	@InjectMocks
 	private MemberService memberService;
@@ -121,6 +124,63 @@ class MemberServiceTest {
 				.isInstanceOf(MemberServiceApiException.class)
 				.satisfies(ex -> assertThat(((MemberServiceApiException) ex).getErrorCode())
 					.isEqualTo(ErrorCode.MEMBER_NOT_FOUND));
+		}
+	}
+
+	// =========================================================
+	// withdraw
+	// =========================================================
+	@Nested
+	@DisplayName("withdraw")
+	class Withdraw {
+
+		@Test
+		@DisplayName("should soft-delete member and invalidate refresh token")
+		void shouldSoftDeleteAndInvalidateToken() {
+			// given
+			given(memberRepository.findById(1L)).willReturn(Optional.of(testMember));
+
+			// when
+			memberService.withdraw(1L);
+
+			// then
+			assertThat(testMember.getStatus()).isEqualTo(MemberStatus.DELETED);
+			verify(refreshTokenRepository, times(1)).deleteByMemberId(1L);
+		}
+
+		@Test
+		@DisplayName("should throw MEMBER_NOT_FOUND when member does not exist")
+		void shouldThrowWhenMemberNotFound() {
+			// given
+			given(memberRepository.findById(999L)).willReturn(Optional.empty());
+
+			// when & then
+			assertThatThrownBy(() -> memberService.withdraw(999L))
+				.isInstanceOf(MemberServiceApiException.class)
+				.satisfies(ex -> assertThat(((MemberServiceApiException) ex).getErrorCode())
+					.isEqualTo(ErrorCode.MEMBER_NOT_FOUND));
+			verify(refreshTokenRepository, never()).deleteByMemberId(any());
+		}
+
+		@Test
+		@DisplayName("should throw ALREADY_WITHDRAWN when member is already DELETED")
+		void shouldThrowWhenAlreadyWithdrawn() {
+			// given
+			Member deleted = Member.builder()
+				.id(2L)
+				.snsProvider(SnsProvider.KAKAO)
+				.socialId("2222")
+				.email("gone@example.com")
+				.status(MemberStatus.DELETED)
+				.build();
+			given(memberRepository.findById(2L)).willReturn(Optional.of(deleted));
+
+			// when & then
+			assertThatThrownBy(() -> memberService.withdraw(2L))
+				.isInstanceOf(MemberServiceApiException.class)
+				.satisfies(ex -> assertThat(((MemberServiceApiException) ex).getErrorCode())
+					.isEqualTo(ErrorCode.ALREADY_WITHDRAWN));
+			verify(refreshTokenRepository, never()).deleteByMemberId(any());
 		}
 	}
 
