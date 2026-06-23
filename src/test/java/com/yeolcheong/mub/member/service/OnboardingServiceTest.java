@@ -20,6 +20,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.mock.web.MockMultipartFile;
 
 import com.yeolcheong.mub.member.domain.MemberStatus;
 import com.yeolcheong.mub.member.domain.SnsProvider;
@@ -28,6 +29,7 @@ import com.yeolcheong.mub.member.domain.InterestOption;
 import com.yeolcheong.mub.member.domain.InterestType;
 import com.yeolcheong.mub.member.domain.Member;
 import com.yeolcheong.mub.member.domain.MemberInterest;
+import com.yeolcheong.mub.member.domain.MemberProfileImage;
 import com.yeolcheong.mub.member.domain.MemberTermsAgreement;
 import com.yeolcheong.mub.member.domain.TermsType;
 import com.yeolcheong.mub.member.dto.OnboardingRequest;
@@ -40,6 +42,8 @@ import com.yeolcheong.mub.member.repository.MemberInterestRepository;
 import com.yeolcheong.mub.member.repository.MemberProfileImageRepository;
 import com.yeolcheong.mub.member.repository.MemberRepository;
 import com.yeolcheong.mub.member.repository.MemberTermsAgreementRepository;
+import com.yeolcheong.mub.member.storage.ProfileImageStorage;
+import com.yeolcheong.mub.member.storage.StoredImage;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("OnboardingService")
@@ -55,6 +59,8 @@ class OnboardingServiceTest {
 	private MemberInterestRepository memberInterestRepository;
 	@Mock
 	private MemberProfileImageRepository memberProfileImageRepository;
+	@Mock
+	private ProfileImageStorage profileImageStorage;
 	@Mock
 	private CouponService couponService;
 
@@ -169,7 +175,7 @@ class OnboardingServiceTest {
 			OnboardingRequest request = buildValidRequest("테스트유저", 1);
 
 			// when
-			OnboardingResponse response = onboardingService.completeOnboarding(1L, request);
+			OnboardingResponse response = onboardingService.completeOnboarding(1L, request, null);
 
 			// then
 			assertSoftly(softly -> {
@@ -181,13 +187,47 @@ class OnboardingServiceTest {
 		}
 
 		@Test
+		@DisplayName("should store profile image and link it to member when image is provided")
+		void shouldStoreProfileImageWhenProvided() {
+			// given
+			setupCommonMocks();
+			MockMultipartFile image = new MockMultipartFile(
+				"profileImage", "profileSample1.png", "image/png", new byte[] {1, 2, 3});
+			given(profileImageStorage.store(image))
+				.willReturn(new StoredImage("profileSample1.png", "uuid.png", "profile/uuid.png", "image/png", 3L));
+			given(memberProfileImageRepository.save(any(MemberProfileImage.class)))
+				.willReturn(MemberProfileImage.builder().id(100L).storedFileName("uuid.png").filePath("profile/uuid.png").build());
+
+			// when
+			onboardingService.completeOnboarding(1L, buildValidRequest("닉네임", 1), image);
+
+			// then
+			then(profileImageStorage).should(times(1)).store(image);
+			assertThat(inactiveMember.getImageId()).isEqualTo(100L);
+		}
+
+		@Test
+		@DisplayName("should not touch storage when no profile image is provided")
+		void shouldSkipProfileImageWhenAbsent() {
+			// given
+			setupCommonMocks();
+
+			// when
+			onboardingService.completeOnboarding(1L, buildValidRequest("닉네임", 1), null);
+
+			// then
+			then(profileImageStorage).shouldHaveNoInteractions();
+			assertThat(inactiveMember.getImageId()).isNull();
+		}
+
+		@Test
 		@DisplayName("should set member status to ACTIVE after onboarding")
 		void shouldSetMemberStatusToActiveAfterOnboarding() {
 			// given
 			setupCommonMocks();
 
 			// when
-			onboardingService.completeOnboarding(1L, buildValidRequest("닉네임", 1));
+			onboardingService.completeOnboarding(1L, buildValidRequest("닉네임", 1), null);
 
 			// then
 			assertThat(inactiveMember.getStatus()).isEqualTo(MemberStatus.ACTIVE);
@@ -201,7 +241,7 @@ class OnboardingServiceTest {
 			setupCommonMocks();
 
 			// when
-			onboardingService.completeOnboarding(1L, buildValidRequest("새닉네임", 1));
+			onboardingService.completeOnboarding(1L, buildValidRequest("새닉네임", 1), null);
 
 			// then
 			assertThat(inactiveMember.getNickname()).isEqualTo("새닉네임");
@@ -214,7 +254,7 @@ class OnboardingServiceTest {
 			setupCommonMocks();
 
 			// when
-			onboardingService.completeOnboarding(1L, buildValidRequest("닉네임", 1));
+			onboardingService.completeOnboarding(1L, buildValidRequest("닉네임", 1), null);
 
 			// then
 			assertSoftly(softly -> {
@@ -232,7 +272,7 @@ class OnboardingServiceTest {
 			OnboardingRequest request = buildValidRequest("닉네임", interestCount);
 
 			// when
-			OnboardingResponse response = onboardingService.completeOnboarding(1L, request);
+			OnboardingResponse response = onboardingService.completeOnboarding(1L, request, null);
 
 			// then
 			assertThat(response).isNotNull();
@@ -252,7 +292,7 @@ class OnboardingServiceTest {
 				.build();
 
 			// when
-			onboardingService.completeOnboarding(1L, request);
+			onboardingService.completeOnboarding(1L, request, null);
 
 			// then
 			then(memberTermsAgreementRepository).should().saveAll(argThat(list -> {
@@ -276,7 +316,7 @@ class OnboardingServiceTest {
 				.build();
 
 			// when
-			onboardingService.completeOnboarding(1L, request);
+			onboardingService.completeOnboarding(1L, request, null);
 
 			// then
 			then(memberTermsAgreementRepository).should().saveAll(argThat(list -> {
@@ -294,7 +334,7 @@ class OnboardingServiceTest {
 			setupCommonMocks();
 
 			// when
-			onboardingService.completeOnboarding(1L, buildValidRequest("닉네임", 2));
+			onboardingService.completeOnboarding(1L, buildValidRequest("닉네임", 2), null);
 
 			// then — deleteByMemberId가 save보다 먼저 호출되어야 함
 			var inOrder = inOrder(memberInterestRepository);
@@ -309,7 +349,7 @@ class OnboardingServiceTest {
 			setupCommonMocks();
 
 			// when
-			onboardingService.completeOnboarding(1L, buildValidRequest("닉네임", 1));
+			onboardingService.completeOnboarding(1L, buildValidRequest("닉네임", 1), null);
 
 			// then
 			then(couponService).should(times(1)).issueWelcomeVoucher(1L);
@@ -323,7 +363,7 @@ class OnboardingServiceTest {
 			given(couponService.issueWelcomeVoucher(1L)).willThrow(new RuntimeException("issue failed"));
 
 			// when
-			OnboardingResponse response = onboardingService.completeOnboarding(1L, buildValidRequest("닉네임", 1));
+			OnboardingResponse response = onboardingService.completeOnboarding(1L, buildValidRequest("닉네임", 1), null);
 
 			// then — 쿠폰 발급 실패가 가입을 막지 않는다
 			assertThat(response).isNotNull();
@@ -345,7 +385,7 @@ class OnboardingServiceTest {
 			given(memberRepository.findById(999L)).willReturn(Optional.empty());
 
 			// when & then
-			assertThatThrownBy(() -> onboardingService.completeOnboarding(999L, buildValidRequest("닉네임", 1)))
+			assertThatThrownBy(() -> onboardingService.completeOnboarding(999L, buildValidRequest("닉네임", 1), null))
 				.isInstanceOf(MemberServiceApiException.class)
 				.satisfies(ex -> assertThat(((MemberServiceApiException)ex).getErrorCode())
 					.isEqualTo(ErrorCode.MEMBER_NOT_FOUND));
@@ -362,7 +402,7 @@ class OnboardingServiceTest {
 			given(memberRepository.findById(1L)).willReturn(Optional.of(alreadyOnboarded));
 
 			// when & then
-			assertThatThrownBy(() -> onboardingService.completeOnboarding(1L, buildValidRequest("닉네임", 1)))
+			assertThatThrownBy(() -> onboardingService.completeOnboarding(1L, buildValidRequest("닉네임", 1), null))
 				.isInstanceOf(MemberServiceApiException.class)
 				.satisfies(ex -> assertThat(((MemberServiceApiException)ex).getErrorCode())
 					.isEqualTo(ErrorCode.ALREADY_ONBOARDED));
@@ -389,7 +429,7 @@ class OnboardingServiceTest {
 			OnboardingRequest request = buildRequestWithTerms(termsRequest);
 
 			// when & then
-			assertThatThrownBy(() -> onboardingService.completeOnboarding(1L, request))
+			assertThatThrownBy(() -> onboardingService.completeOnboarding(1L, request, null))
 				.isInstanceOf(MemberServiceApiException.class)
 				.satisfies(ex -> {
 					MemberServiceApiException apiEx = (MemberServiceApiException)ex;
@@ -414,7 +454,7 @@ class OnboardingServiceTest {
 
 			// when & then
 			assertThatNoException()
-				.isThrownBy(() -> onboardingService.completeOnboarding(1L, request));
+				.isThrownBy(() -> onboardingService.completeOnboarding(1L, request, null));
 		}
 	}
 
@@ -435,7 +475,7 @@ class OnboardingServiceTest {
 				.willReturn(Optional.empty());
 
 			// when & then
-			assertThatThrownBy(() -> onboardingService.completeOnboarding(1L, buildValidRequest("닉네임", 1)))
+			assertThatThrownBy(() -> onboardingService.completeOnboarding(1L, buildValidRequest("닉네임", 1), null))
 				.isInstanceOf(OnboardingServiceApiException.class)
 				.extracting("errorCode")
 				.isEqualTo(ErrorCode.INVALID_DISTRICT_CODE);
@@ -457,7 +497,7 @@ class OnboardingServiceTest {
 			OnboardingRequest request = buildRequestWithDistrict(distCode1, distCode2);
 
 			// when & then
-			assertThatThrownBy(() -> onboardingService.completeOnboarding(1L, request))
+			assertThatThrownBy(() -> onboardingService.completeOnboarding(1L, request, null))
 				.isInstanceOf(OnboardingServiceApiException.class);
 		}
 	}
@@ -477,7 +517,7 @@ class OnboardingServiceTest {
 			OnboardingRequest request = buildRequestWithInterests(List.of());
 
 			// when & then
-			assertThatThrownBy(() -> onboardingService.completeOnboarding(1L, request))
+			assertThatThrownBy(() -> onboardingService.completeOnboarding(1L, request, null))
 				.isInstanceOf(MemberServiceApiException.class)
 				.satisfies(ex -> assertThat(((MemberServiceApiException)ex).getErrorCode())
 					.isEqualTo(ErrorCode.INVALID_INTEREST_COUNT));
@@ -492,7 +532,7 @@ class OnboardingServiceTest {
 			OnboardingRequest request = buildRequestWithInterests(buildInterests(count));
 
 			// when & then
-			assertThatThrownBy(() -> onboardingService.completeOnboarding(1L, request))
+			assertThatThrownBy(() -> onboardingService.completeOnboarding(1L, request, null))
 				.isInstanceOf(MemberServiceApiException.class)
 				.satisfies(ex -> assertThat(((MemberServiceApiException)ex).getErrorCode())
 					.isEqualTo(ErrorCode.INVALID_INTEREST_COUNT));
@@ -508,7 +548,7 @@ class OnboardingServiceTest {
 			);
 
 			// when & then
-			assertThatThrownBy(() -> onboardingService.completeOnboarding(1L, request))
+			assertThatThrownBy(() -> onboardingService.completeOnboarding(1L, request, null))
 				.isInstanceOf(MemberServiceApiException.class)
 				.satisfies(ex -> assertThat(((MemberServiceApiException)ex).getErrorCode())
 					.isEqualTo(ErrorCode.INTEREST_OPTION_REQUIRED));
@@ -524,7 +564,7 @@ class OnboardingServiceTest {
 			);
 
 			// when & then
-			assertThatThrownBy(() -> onboardingService.completeOnboarding(1L, request))
+			assertThatThrownBy(() -> onboardingService.completeOnboarding(1L, request, null))
 				.isInstanceOf(MemberServiceApiException.class)
 				.satisfies(ex -> assertThat(((MemberServiceApiException)ex).getErrorCode())
 					.isEqualTo(ErrorCode.INTEREST_OPTION_REQUIRED));
@@ -542,7 +582,7 @@ class OnboardingServiceTest {
 			);
 
 			// when & then
-			assertThatThrownBy(() -> onboardingService.completeOnboarding(1L, request))
+			assertThatThrownBy(() -> onboardingService.completeOnboarding(1L, request, null))
 				.isInstanceOf(MemberServiceApiException.class)
 				.satisfies(ex -> {
 					MemberServiceApiException apiEx = (MemberServiceApiException)ex;
@@ -564,7 +604,7 @@ class OnboardingServiceTest {
 			);
 
 			// when & then
-			assertThatThrownBy(() -> onboardingService.completeOnboarding(1L, request))
+			assertThatThrownBy(() -> onboardingService.completeOnboarding(1L, request, null))
 				.isInstanceOf(MemberServiceApiException.class)
 				.satisfies(ex -> assertThat(((MemberServiceApiException)ex).getErrorCode())
 					.isEqualTo(ErrorCode.INVALID_INTEREST_OPTION));

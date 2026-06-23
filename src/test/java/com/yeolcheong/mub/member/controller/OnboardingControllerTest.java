@@ -17,6 +17,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -67,35 +68,62 @@ class OnboardingControllerTest {
 			.build();
 	}
 
+	/**
+	 * 온보딩 JSON 입력을 multipart "request" 파트로 만든다.
+	 */
+	private MockMultipartFile requestPart(OnboardingRequest request) throws Exception {
+		return new MockMultipartFile("request", "", MediaType.APPLICATION_JSON_VALUE,
+			objectMapper.writeValueAsBytes(request));
+	}
+
+	private MockMultipartFile imagePart() {
+		return new MockMultipartFile("profileImage", "profileSample1.png",
+			MediaType.IMAGE_PNG_VALUE, new byte[] {1, 2, 3});
+	}
+
 	@Test
-	@DisplayName("POST /api/onboarding/complete - returns 201 when onboarding succeeds")
+	@DisplayName("POST /api/onboarding/complete - returns 201 with profile image part")
 	@WithMockUser(username = "1")
 	void shouldCompleteOnboardingSuccessfully() throws Exception {
 		// given
 		OnboardingResponse response = OnboardingResponse.of(1L, "테스트유저");
-		given(onboardingService.completeOnboarding(eq(1L), any(OnboardingRequest.class))).willReturn(response);
+		given(onboardingService.completeOnboarding(eq(1L), any(OnboardingRequest.class), any())).willReturn(response);
 
 		// when & then
-		mockMvc.perform(post("/api/onboarding/complete").contentType(MediaType.APPLICATION_JSON)
-				.content(objectMapper.writeValueAsString(validRequest)))
+		mockMvc.perform(multipart("/api/onboarding/complete")
+				.file(requestPart(validRequest))
+				.file(imagePart()))
 			.andDo(print())
 			.andExpect(status().isCreated())
 			.andExpect(jsonPath("$.memberId").value(1))
 			.andExpect(jsonPath("$.nickname").value("테스트유저"))
 			.andExpect(jsonPath("$.message").value("회원가입이 완료되었습니다"));
 
-		then(onboardingService).should().completeOnboarding(eq(1L), any(OnboardingRequest.class));
+		then(onboardingService).should().completeOnboarding(eq(1L), any(OnboardingRequest.class), any());
+	}
+
+	@Test
+	@DisplayName("POST /api/onboarding/complete - returns 201 without profile image (optional)")
+	@WithMockUser(username = "1")
+	void shouldCompleteOnboardingWithoutImage() throws Exception {
+		given(onboardingService.completeOnboarding(eq(1L), any(OnboardingRequest.class), any()))
+			.willReturn(OnboardingResponse.of(1L, "테스트유저"));
+
+		mockMvc.perform(multipart("/api/onboarding/complete")
+				.file(requestPart(validRequest)))
+			.andDo(print())
+			.andExpect(status().isCreated());
 	}
 
 	@Test
 	@DisplayName("POST /api/onboarding/complete - returns 403 when caller is unauthenticated")
 	void shouldFailWhenNotAuthenticated() throws Exception {
-		mockMvc.perform(post("/api/onboarding/complete").contentType(MediaType.APPLICATION_JSON)
-				.content(objectMapper.writeValueAsString(validRequest)))
+		mockMvc.perform(multipart("/api/onboarding/complete")
+				.file(requestPart(validRequest)))
 			.andDo(print())
 			.andExpect(status().isForbidden());
 
-		then(onboardingService).should(never()).completeOnboarding(anyLong(), any());
+		then(onboardingService).should(never()).completeOnboarding(anyLong(), any(), any());
 	}
 
 	@Test
@@ -110,8 +138,8 @@ class OnboardingControllerTest {
 			.interests(validRequest.getInterests())
 			.build();
 
-		mockMvc.perform(post("/api/onboarding/complete").contentType(MediaType.APPLICATION_JSON)
-				.content(objectMapper.writeValueAsString(invalidRequest)))
+		mockMvc.perform(multipart("/api/onboarding/complete")
+				.file(requestPart(invalidRequest)))
 			.andDo(print())
 			.andExpect(status().isBadRequest());
 	}
@@ -121,18 +149,18 @@ class OnboardingControllerTest {
 	@WithMockUser(username = "1")
 	void shouldFailWhenInvalidDistrictCode() throws Exception {
 		// given — 닉네임 등 모든 입력은 유효, 서비스 단에서 지역 코드 검증 실패
-		given(onboardingService.completeOnboarding(eq(1L), any(OnboardingRequest.class)))
+		given(onboardingService.completeOnboarding(eq(1L), any(OnboardingRequest.class), any()))
 			.willThrow(new OnboardingServiceApiException(ErrorCode.INVALID_DISTRICT_CODE));
 
 		// when & then
-		mockMvc.perform(post("/api/onboarding/complete").contentType(MediaType.APPLICATION_JSON)
-				.content(objectMapper.writeValueAsString(validRequest)))
+		mockMvc.perform(multipart("/api/onboarding/complete")
+				.file(requestPart(validRequest)))
 			.andDo(print())
 			.andExpect(status().isBadRequest())
 			.andExpect(jsonPath("$.code").value("E40010"))
 			.andExpect(jsonPath("$.message").value("유효하지 않은 지역 코드입니다"));
 
-		then(onboardingService).should().completeOnboarding(eq(1L), any(OnboardingRequest.class));
+		then(onboardingService).should().completeOnboarding(eq(1L), any(OnboardingRequest.class), any());
 	}
 
 	@Test
@@ -140,17 +168,17 @@ class OnboardingControllerTest {
 	@WithMockUser(username = "999")
 	void shouldFailWhenMemberNotFound() throws Exception {
 		// given - Mock 설정 필수!
-		given(onboardingService.completeOnboarding(eq(999L), any())).willThrow(
+		given(onboardingService.completeOnboarding(eq(999L), any(), any())).willThrow(
 			new MemberServiceApiException(ErrorCode.MEMBER_NOT_FOUND));
 
 		// when & then
-		mockMvc.perform(post("/api/onboarding/complete").contentType(MediaType.APPLICATION_JSON)
-				.content(objectMapper.writeValueAsString(validRequest)))
+		mockMvc.perform(multipart("/api/onboarding/complete")
+				.file(requestPart(validRequest)))
 			.andDo(print())
 			.andExpect(status().isNotFound())
 			.andExpect(jsonPath("$.code").value("E40401"));
 
 		// Service 호출 검증
-		then(onboardingService).should().completeOnboarding(eq(999L), any());
+		then(onboardingService).should().completeOnboarding(eq(999L), any(), any());
 	}
 }

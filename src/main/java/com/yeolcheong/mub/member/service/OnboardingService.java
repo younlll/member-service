@@ -5,6 +5,7 @@ import java.util.Map;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import com.yeolcheong.mub.member.domain.MemberStatus;
 import com.yeolcheong.mub.member.domain.District;
@@ -25,6 +26,8 @@ import com.yeolcheong.mub.member.repository.MemberInterestRepository;
 import com.yeolcheong.mub.member.repository.MemberProfileImageRepository;
 import com.yeolcheong.mub.member.repository.MemberRepository;
 import com.yeolcheong.mub.member.repository.MemberTermsAgreementRepository;
+import com.yeolcheong.mub.member.storage.ProfileImageStorage;
+import com.yeolcheong.mub.member.storage.StoredImage;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -40,10 +43,12 @@ public class OnboardingService {
 	private final DistrictRepository districtRepository;
 	private final MemberInterestRepository memberInterestRepository;
 	private final MemberProfileImageRepository memberProfileImageRepository;
+	private final ProfileImageStorage profileImageStorage;
 	private final CouponService couponService;
 
 	@Transactional
-	public OnboardingResponse completeOnboarding(Long memberId, OnboardingRequest onboardingRequest) {
+	public OnboardingResponse completeOnboarding(
+		Long memberId, OnboardingRequest onboardingRequest, MultipartFile profileImage) {
 		log.info("Onboarding started: memberId={}", memberId);
 
 		// 1. 회원 조회
@@ -68,7 +73,7 @@ public class OnboardingService {
 		saveInterests(member, onboardingRequest.getInterests());
 
 		// 7. 프로필 이미지 등록(선택)
-		registerProfileImage(member, onboardingRequest.getProfileImagePath());
+		registerProfileImage(member, profileImage);
 
 		// 8. 온보딩 완료 처리
 		member.updateMemberState(MemberStatus.ACTIVE);
@@ -83,25 +88,28 @@ public class OnboardingService {
 	/**
 	 * 프로필 이미지 등록(선택).
 	 * <p>
-	 * 사전 업로드로 받은 스토리지 중립 상대 경로가 전달되면 이미지 행을 생성하고 회원에 연결한다.
-	 * 경로가 없으면 기본 이미지를 사용한다(미연결).
+	 * 업로드된 이미지 파일이 있으면 스토리지에 저장하고(현재 로컬, 향후 서버 스토리지) 이미지 행을 생성해
+	 * 회원에 연결한다. 파일이 없으면 기본 이미지를 사용한다(미연결).
 	 */
-	private void registerProfileImage(Member member, String profileImagePath) {
-		if (profileImagePath == null || profileImagePath.isBlank()) {
+	private void registerProfileImage(Member member, MultipartFile profileImage) {
+		if (profileImage == null || profileImage.isEmpty()) {
 			return;
 		}
 
-		String relativePath = profileImagePath.strip();
-		String storedFileName = relativePath.substring(relativePath.lastIndexOf('/') + 1);
+		StoredImage stored = profileImageStorage.store(profileImage);
 
 		MemberProfileImage image = MemberProfileImage.builder()
-			.storedFileName(storedFileName)
-			.filePath(relativePath)
+			.originalFileName(stored.originalFileName())
+			.storedFileName(stored.storedFileName())
+			.filePath(stored.filePath())
+			.contentType(stored.contentType())
+			.fileSize(stored.fileSize())
 			.build();
 		MemberProfileImage saved = memberProfileImageRepository.save(image);
 
 		member.assignImage(saved.getId());
-		log.debug("Profile image linked on onboarding: memberId={}, imageId={}", member.getId(), saved.getId());
+		log.debug("Profile image stored and linked on onboarding: memberId={}, imageId={}",
+			member.getId(), saved.getId());
 	}
 
 	/**
