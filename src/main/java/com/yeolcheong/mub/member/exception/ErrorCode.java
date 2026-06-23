@@ -21,6 +21,7 @@ public enum ErrorCode {
 	INVALID_INTEREST_OPTION(HttpStatus.BAD_REQUEST, "E40009", "해당 관심사에 유효하지 않은 옵션입니다"),
 	INVALID_DISTRICT_CODE(HttpStatus.BAD_REQUEST, "E40010", "유효하지 않은 지역 코드입니다"),
 	INVALID_IMAGE_FILE(HttpStatus.BAD_REQUEST, "E40011", "유효하지 않은 이미지 파일입니다"),
+	ALREADY_WITHDRAWN(HttpStatus.BAD_REQUEST, "E40012", "이미 탈퇴한 회원입니다"),
 
 	// 404 Not Found
 	MEMBER_NOT_FOUND(HttpStatus.NOT_FOUND, "E40401", "회원을 찾을 수 없습니다"),

@@ -18,6 +18,7 @@ import com.yeolcheong.mub.member.dto.SnsUserInfoResponse;
 import com.yeolcheong.mub.member.exception.ErrorCode;
 import com.yeolcheong.mub.member.exception.MemberServiceApiException;
 import com.yeolcheong.mub.member.repository.MemberRepository;
+import com.yeolcheong.mub.member.repository.RefreshTokenRepository;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -29,10 +30,34 @@ import lombok.extern.slf4j.Slf4j;
 public class MemberService {
 
 	private final MemberRepository memberRepository;
+	private final RefreshTokenRepository refreshTokenRepository;
 
 	public Member findById(Long memberId) {
 		return memberRepository.findById(memberId)
 			.orElseThrow(() -> new MemberServiceApiException(ErrorCode.MEMBER_NOT_FOUND));
+	}
+
+	/**
+	 * 회원 탈퇴(soft delete).
+	 * <p>
+	 * 회원 상태를 {@code DELETED}로 전환하고, 저장된 리프레시 토큰을 무효화해 재발급을 차단한다.
+	 * 레코드 자체는 보존한다(다른 서비스 참조·이력 유지). 이미 탈퇴한 회원이면 거절한다.
+	 *
+	 * @param memberId 인증된 본인 회원 ID
+	 */
+	@Transactional
+	public void withdraw(Long memberId) {
+		Member member = memberRepository.findById(memberId)
+			.orElseThrow(() -> new MemberServiceApiException(ErrorCode.MEMBER_NOT_FOUND));
+
+		if (MemberStatus.DELETED.equals(member.getStatus())) {
+			throw new MemberServiceApiException(ErrorCode.ALREADY_WITHDRAWN);
+		}
+
+		member.updateMemberState(MemberStatus.DELETED);
+		refreshTokenRepository.deleteByMemberId(memberId);
+
+		log.info("Member withdrawn: memberId={}", memberId);
 	}
 
 	public Optional<Member> findBySocialId(SnsProvider snsProvider, String socialId) {
