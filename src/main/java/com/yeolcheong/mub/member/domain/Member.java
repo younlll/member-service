@@ -99,6 +99,21 @@ public class Member {
 	}
 
 	/**
+	 * 탈퇴(DELETED) 회원의 재가입 처리.
+	 * <p>
+	 * 같은 레코드(id·socialId·email)를 재사용하되, 프로필 정보를 초기화하고 상태를 {@code INACTIVE}로
+	 * 되돌려 온보딩을 다시 진행하도록 한다.
+	 */
+	public void reactivate() {
+		this.status = MemberStatus.INACTIVE;
+		this.nickname = null;
+		this.bio = null;
+		this.regionProvince = null;
+		this.regionCity = null;
+		this.imageId = null;
+	}
+
+	/**
 	 * 프로필 이미지를 연결한다(등록/수정).
 	 */
 	public void assignImage(Long imageId) {

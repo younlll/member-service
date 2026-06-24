@@ -8,6 +8,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.yeolcheong.mub.member.client.KakaoClient;
 import com.yeolcheong.mub.member.domain.Member;
+import com.yeolcheong.mub.member.domain.MemberStatus;
 import com.yeolcheong.mub.member.domain.RefreshToken;
 import com.yeolcheong.mub.member.domain.SnsProvider;
 import com.yeolcheong.mub.member.dto.LoginResponse;
@@ -111,7 +112,14 @@ public class AuthService {
 			log.info("New member created: memberId={}, socialId={}", member.getId(), member.getSocialId());
 		} else {
 			member = existingMember.get();
-			log.info("Existing member login: memberId={}, socialId={}", member.getId(), member.getSocialId());
+			if (MemberStatus.DELETED.equals(member.getStatus())) {
+				// 탈퇴 회원 재가입: 같은 레코드를 초기화·재활성화하고 신규 회원처럼 온보딩을 진행시킨다.
+				memberService.reactivateForResignup(member);
+				isNewMember = true;
+				log.info("Withdrawn member re-joined: memberId={}, socialId={}", member.getId(), member.getSocialId());
+			} else {
+				log.info("Existing member login: memberId={}, socialId={}", member.getId(), member.getSocialId());
+			}
 		}
 
 		String accessToken = jwtTokenProvider.generateAccessToken(member.getId(), member.getSocialId(),

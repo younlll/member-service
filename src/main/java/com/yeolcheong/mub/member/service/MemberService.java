@@ -30,6 +30,7 @@ import com.yeolcheong.mub.member.exception.MemberServiceApiException;
 import com.yeolcheong.mub.member.repository.DistrictRepository;
 import com.yeolcheong.mub.member.repository.MemberInterestRepository;
 import com.yeolcheong.mub.member.repository.MemberRepository;
+import com.yeolcheong.mub.member.repository.MemberTermsAgreementRepository;
 import com.yeolcheong.mub.member.repository.RefreshTokenRepository;
 
 import lombok.RequiredArgsConstructor;
@@ -45,10 +46,29 @@ public class MemberService {
 	private final RefreshTokenRepository refreshTokenRepository;
 	private final DistrictRepository districtRepository;
 	private final MemberInterestRepository memberInterestRepository;
+	private final MemberTermsAgreementRepository memberTermsAgreementRepository;
 
 	public Member findById(Long memberId) {
 		return memberRepository.findById(memberId)
 			.orElseThrow(() -> new MemberServiceApiException(ErrorCode.MEMBER_NOT_FOUND));
+	}
+
+	/**
+	 * 탈퇴(DELETED) 회원 재가입 처리.
+	 * <p>
+	 * 기존 관심사·약관 동의 이력을 정리하고, 프로필을 초기화한 뒤 상태를 {@code INACTIVE}로 되돌린다.
+	 * 이후 호출자는 신규 회원과 동일하게 온보딩을 진행시킨다.
+	 *
+	 * @param member 재활성화할 탈퇴 회원
+	 */
+	@Transactional
+	public void reactivateForResignup(Member member) {
+		memberInterestRepository.deleteByMemberId(member.getId());
+		memberTermsAgreementRepository.deleteByMemberId(member.getId());
+		member.reactivate();
+		memberRepository.save(member);
+
+		log.info("Withdrawn member reactivated for re-signup: memberId={}", member.getId());
 	}
 
 	/**
