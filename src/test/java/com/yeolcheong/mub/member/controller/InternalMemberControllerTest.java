@@ -48,11 +48,13 @@ class InternalMemberControllerTest {
 			MemberSummaryResponse.builder()
 				.memberId(1L)
 				.nickname("테스터")
+				.profileImageUrl("http://localhost:8083/images/profile/custom.png")
 				.email("test@example.com")
 				.build(),
 			MemberSummaryResponse.builder()
 				.memberId(2L)
 				.nickname("아더")
+				.profileImageUrl("http://localhost:8083/images/profile/default.png")
 				.email("other@example.com")
 				.build()
 		);
@@ -65,6 +67,7 @@ class InternalMemberControllerTest {
 			.andExpect(jsonPath("$.length()").value(2))
 			.andExpect(jsonPath("$[0].memberId").value(1))
 			.andExpect(jsonPath("$[0].nickname").value("테스터"))
+			.andExpect(jsonPath("$[0].profileImageUrl").value("http://localhost:8083/images/profile/custom.png"))
 			.andExpect(jsonPath("$[0].email").value("test@example.com"))
 			.andExpect(jsonPath("$[1].memberId").value(2));
 
