@@ -47,6 +47,7 @@ public class MemberService {
 	private final DistrictRepository districtRepository;
 	private final MemberInterestRepository memberInterestRepository;
 	private final MemberTermsAgreementRepository memberTermsAgreementRepository;
+	private final ProfileImageService profileImageService;
 
 	public Member findById(Long memberId) {
 		return memberRepository.findById(memberId)
@@ -227,6 +228,7 @@ public class MemberService {
 	 * Bulk lookup for service-to-service enrichment.
 	 * Returns only the members that actually exist — callers must tolerate
 	 * a result smaller than the requested id set (e.g. deleted members).
+	 * Each summary carries a resolved public profile image URL (default image when none).
 	 */
 	public List<MemberSummaryResponse> findSummariesByIds(Collection<Long> memberIds) {
 		if (memberIds == null || memberIds.isEmpty()) {
@@ -234,8 +236,11 @@ public class MemberService {
 		}
 		log.info("Bulk member lookup: requestedSize={}", memberIds.size());
 
-		List<MemberSummaryResponse> results = memberRepository.findAllById(memberIds).stream()
-			.map(MemberSummaryResponse::from)
+		List<Member> members = memberRepository.findAllById(memberIds);
+		Map<Long, String> imageUrls = profileImageService.resolveImageUrls(members);
+
+		List<MemberSummaryResponse> results = members.stream()
+			.map(member -> MemberSummaryResponse.from(member, imageUrls.get(member.getId())))
 			.toList();
 
 		log.info("Bulk member lookup completed: requestedSize={}, foundSize={}", memberIds.size(), results.size());

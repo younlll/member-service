@@ -4,6 +4,8 @@ import static org.assertj.core.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.BDDMockito.*;
 
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -179,6 +181,49 @@ class ProfileImageServiceTest {
 			.isInstanceOf(MemberServiceApiException.class)
 			.extracting("errorCode")
 			.isEqualTo(ErrorCode.PROFILE_IMAGE_NOT_FOUND);
+	}
+
+	@Test
+	@DisplayName("resolveImageUrls - resolves custom urls and falls back to default for none/dangling")
+	void resolveImageUrls_mixed() {
+		// given — member with custom image, member without image, member with dangling image id
+		Member withImage = buildMember(1L, 100L);
+		Member noImage = buildMember(2L, null);
+		Member dangling = buildMember(3L, 200L);
+		given(profileImageRepository.findAllById(List.of(100L, 200L)))
+			.willReturn(List.of(buildImage(100L, "profile/uuid.png")));
+
+		// when
+		Map<Long, String> result = profileImageService.resolveImageUrls(List.of(withImage, noImage, dangling));
+
+		// then
+		String defaultUrl = "http://localhost:8083/images/profile/default.png";
+		assertThat(result).hasSize(3);
+		assertThat(result.get(1L)).isEqualTo("http://localhost:8083/images/profile/uuid.png");
+		assertThat(result.get(2L)).isEqualTo(defaultUrl);
+		assertThat(result.get(3L)).isEqualTo(defaultUrl);
+	}
+
+	@Test
+	@DisplayName("resolveImageUrls - returns empty map for empty input without hitting the repository")
+	void resolveImageUrls_empty() {
+		// when
+		Map<Long, String> result = profileImageService.resolveImageUrls(List.of());
+
+		// then
+		assertThat(result).isEmpty();
+		then(profileImageRepository).should(never()).findAllById(any());
+	}
+
+	@Test
+	@DisplayName("resolveImageUrls - returns empty map for null input")
+	void resolveImageUrls_null() {
+		// when
+		Map<Long, String> result = profileImageService.resolveImageUrls(null);
+
+		// then
+		assertThat(result).isEmpty();
+		then(profileImageRepository).should(never()).findAllById(any());
 	}
 
 	private Member buildMember(Long id, Long imageId) {

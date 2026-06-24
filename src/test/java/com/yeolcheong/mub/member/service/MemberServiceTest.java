@@ -7,6 +7,7 @@ import static org.mockito.BDDMockito.*;
 import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -56,6 +57,8 @@ class MemberServiceTest {
 	private MemberInterestRepository memberInterestRepository;
 	@Mock
 	private MemberTermsAgreementRepository memberTermsAgreementRepository;
+	@Mock
+	private ProfileImageService profileImageService;
 
 	@InjectMocks
 	private MemberService memberService;
@@ -639,6 +642,10 @@ class MemberServiceTest {
 				.build();
 			List<Long> ids = List.of(1L, 2L);
 			given(memberRepository.findAllById(ids)).willReturn(List.of(testMember, other));
+			given(profileImageService.resolveImageUrls(List.of(testMember, other)))
+				.willReturn(Map.of(
+					1L, "http://localhost:8083/images/profile/custom.png",
+					2L, "http://localhost:8083/images/profile/default.png"));
 
 			// when
 			List<MemberSummaryResponse> result = memberService.findSummariesByIds(ids);
@@ -650,6 +657,9 @@ class MemberServiceTest {
 					.containsExactly(1L, 2L);
 				softly.assertThat(result).extracting(MemberSummaryResponse::getNickname)
 					.containsExactly("테스터", "아더");
+				softly.assertThat(result).extracting(MemberSummaryResponse::getProfileImageUrl)
+					.containsExactly("http://localhost:8083/images/profile/custom.png",
+						"http://localhost:8083/images/profile/default.png");
 				softly.assertThat(result).extracting(MemberSummaryResponse::getEmail)
 					.containsExactly("test@example.com", "other@example.com");
 			});
@@ -662,6 +672,8 @@ class MemberServiceTest {
 			// given — request 3 ids but DB only has 1
 			List<Long> ids = List.of(1L, 99L, 100L);
 			given(memberRepository.findAllById(ids)).willReturn(List.of(testMember));
+			given(profileImageService.resolveImageUrls(List.of(testMember)))
+				.willReturn(Map.of(1L, "http://localhost:8083/images/profile/custom.png"));
 
 			// when
 			List<MemberSummaryResponse> result = memberService.findSummariesByIds(ids);
@@ -670,6 +682,28 @@ class MemberServiceTest {
 			assertSoftly(softly -> {
 				softly.assertThat(result).hasSize(1);
 				softly.assertThat(result.get(0).getMemberId()).isEqualTo(1L);
+				softly.assertThat(result.get(0).getProfileImageUrl())
+					.isEqualTo("http://localhost:8083/images/profile/custom.png");
+			});
+		}
+
+		@Test
+		@DisplayName("should fall back to default image url when member has no custom image")
+		void shouldFallBackToDefaultImageUrl() {
+			// given — member without a custom profile image
+			List<Long> ids = List.of(1L);
+			String defaultUrl = "http://localhost:8083/images/profile/default.png";
+			given(memberRepository.findAllById(ids)).willReturn(List.of(testMember));
+			given(profileImageService.resolveImageUrls(List.of(testMember)))
+				.willReturn(Map.of(1L, defaultUrl));
+
+			// when
+			List<MemberSummaryResponse> result = memberService.findSummariesByIds(ids);
+
+			// then
+			assertSoftly(softly -> {
+				softly.assertThat(result).hasSize(1);
+				softly.assertThat(result.get(0).getProfileImageUrl()).isEqualTo(defaultUrl);
 			});
 		}
 
