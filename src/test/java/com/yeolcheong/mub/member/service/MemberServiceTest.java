@@ -39,6 +39,7 @@ import com.yeolcheong.mub.member.exception.MemberServiceApiException;
 import com.yeolcheong.mub.member.repository.DistrictRepository;
 import com.yeolcheong.mub.member.repository.MemberInterestRepository;
 import com.yeolcheong.mub.member.repository.MemberRepository;
+import com.yeolcheong.mub.member.repository.MemberTermsAgreementRepository;
 import com.yeolcheong.mub.member.repository.RefreshTokenRepository;
 
 @ExtendWith(MockitoExtension.class)
@@ -53,6 +54,8 @@ class MemberServiceTest {
 	private DistrictRepository districtRepository;
 	@Mock
 	private MemberInterestRepository memberInterestRepository;
+	@Mock
+	private MemberTermsAgreementRepository memberTermsAgreementRepository;
 
 	@InjectMocks
 	private MemberService memberService;
@@ -193,6 +196,46 @@ class MemberServiceTest {
 				.satisfies(ex -> assertThat(((MemberServiceApiException) ex).getErrorCode())
 					.isEqualTo(ErrorCode.ALREADY_WITHDRAWN));
 			verify(refreshTokenRepository, never()).deleteByMemberId(any());
+		}
+	}
+
+	// =========================================================
+	// reactivateForResignup
+	// =========================================================
+	@Nested
+	@DisplayName("reactivateForResignup")
+	class ReactivateForResignup {
+
+		@Test
+		@DisplayName("should reset profile, clear interests/terms and set status INACTIVE")
+		void shouldReactivateWithdrawnMember() {
+			// given — 탈퇴 회원
+			Member withdrawn = Member.builder()
+				.id(7L)
+				.snsProvider(SnsProvider.KAKAO)
+				.socialId("7777")
+				.email("back@example.com")
+				.nickname("옛닉네임")
+				.regionProvince("서울특별시")
+				.regionCity("강남구")
+				.status(MemberStatus.DELETED)
+				.build();
+			withdrawn.assignImage(50L);
+
+			// when
+			memberService.reactivateForResignup(withdrawn);
+
+			// then
+			assertSoftly(softly -> {
+				softly.assertThat(withdrawn.getStatus()).isEqualTo(MemberStatus.INACTIVE);
+				softly.assertThat(withdrawn.getNickname()).isNull();
+				softly.assertThat(withdrawn.getRegionProvince()).isNull();
+				softly.assertThat(withdrawn.getRegionCity()).isNull();
+				softly.assertThat(withdrawn.getImageId()).isNull();
+			});
+			verify(memberInterestRepository, times(1)).deleteByMemberId(7L);
+			verify(memberTermsAgreementRepository, times(1)).deleteByMemberId(7L);
+			verify(memberRepository, times(1)).save(withdrawn);
 		}
 	}
 
