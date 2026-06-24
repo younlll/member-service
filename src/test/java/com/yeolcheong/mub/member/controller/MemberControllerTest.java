@@ -28,6 +28,7 @@ import com.yeolcheong.mub.member.exception.ErrorCode;
 import com.yeolcheong.mub.member.exception.MemberServiceApiException;
 import com.yeolcheong.mub.member.security.JwtAuthenticationFilter;
 import com.yeolcheong.mub.member.security.JwtTokenProvider;
+import com.yeolcheong.mub.member.repository.MemberRepository;
 import com.yeolcheong.mub.member.service.MemberService;
 
 @WebMvcTest(controllers = MemberController.class)
@@ -46,6 +47,9 @@ class MemberControllerTest {
 
 	@MockitoBean
 	private JwtTokenProvider jwtTokenProvider;
+
+	@MockitoBean
+	private MemberRepository memberRepository;
 
 	private ProfileUpdateRequest buildProfileRequest(String nickname) {
 		InterestType type = InterestType.SELF_DEVELOPMENT;

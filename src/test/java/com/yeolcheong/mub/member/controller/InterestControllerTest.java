@@ -22,6 +22,7 @@ import com.yeolcheong.mub.member.domain.InterestType;
 import com.yeolcheong.mub.member.dto.InterestResponse;
 import com.yeolcheong.mub.member.security.JwtAuthenticationFilter;
 import com.yeolcheong.mub.member.security.JwtTokenProvider;
+import com.yeolcheong.mub.member.repository.MemberRepository;
 import com.yeolcheong.mub.member.service.InterestService;
 
 @WebMvcTest(controllers = InterestController.class)
@@ -37,6 +38,9 @@ class InterestControllerTest {
 
 	@MockitoBean
 	private JwtTokenProvider jwtTokenProvider;
+
+	@MockitoBean
+	private MemberRepository memberRepository;
 
 	@Test
 	@DisplayName("GET /api/interests - returns full interest list")

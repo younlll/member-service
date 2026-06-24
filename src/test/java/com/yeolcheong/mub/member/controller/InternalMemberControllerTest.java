@@ -20,6 +20,7 @@ import com.yeolcheong.mub.member.config.SecurityConfig;
 import com.yeolcheong.mub.member.dto.MemberSummaryResponse;
 import com.yeolcheong.mub.member.security.JwtAuthenticationFilter;
 import com.yeolcheong.mub.member.security.JwtTokenProvider;
+import com.yeolcheong.mub.member.repository.MemberRepository;
 import com.yeolcheong.mub.member.service.MemberService;
 
 @WebMvcTest(controllers = InternalMemberController.class)
@@ -35,6 +36,9 @@ class InternalMemberControllerTest {
 
 	@MockitoBean
 	private JwtTokenProvider jwtTokenProvider;
+
+	@MockitoBean
+	private MemberRepository memberRepository;
 
 	@Test
 	@DisplayName("GET /api/internal/members - returns summaries for the requested ids without requiring auth")

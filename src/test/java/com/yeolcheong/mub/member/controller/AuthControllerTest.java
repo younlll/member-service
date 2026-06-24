@@ -23,6 +23,7 @@ import com.yeolcheong.mub.member.exception.GlobalExceptionHandler;
 import com.yeolcheong.mub.member.exception.MemberServiceApiException;
 import com.yeolcheong.mub.member.security.JwtAuthenticationFilter;
 import com.yeolcheong.mub.member.security.JwtTokenProvider;
+import com.yeolcheong.mub.member.repository.MemberRepository;
 import com.yeolcheong.mub.member.service.AuthService;
 
 @WebMvcTest(controllers = AuthController.class)
@@ -45,6 +46,9 @@ class AuthControllerTest {
 
 	@MockitoBean
 	private JwtTokenProvider jwtTokenProvider;
+
+	@MockitoBean
+	private MemberRepository memberRepository;
 
 	@Test
 	@DisplayName("GET /api/auth/login/url - returns auth URL")

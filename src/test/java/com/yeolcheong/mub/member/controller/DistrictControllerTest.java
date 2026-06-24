@@ -21,6 +21,7 @@ import com.yeolcheong.mub.member.config.SecurityConfig;
 import com.yeolcheong.mub.member.dto.DistrictResponse;
 import com.yeolcheong.mub.member.security.JwtAuthenticationFilter;
 import com.yeolcheong.mub.member.security.JwtTokenProvider;
+import com.yeolcheong.mub.member.repository.MemberRepository;
 import com.yeolcheong.mub.member.service.DistrictService;
 
 @WebMvcTest(controllers = DistrictController.class)
@@ -36,6 +37,9 @@ class DistrictControllerTest {
 
 	@MockitoBean
 	private JwtTokenProvider jwtTokenProvider;
+
+	@MockitoBean
+	private MemberRepository memberRepository;
 
 	@Test
 	@DisplayName("GET /api/districts/code1 - returns province list")
