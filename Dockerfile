@@ -38,8 +38,12 @@ RUN apk add --no-cache curl
 # 빌드된 JAR 파일을 Runtime stage로 복사
 COPY --from=builder /build/build/libs/*.jar app.jar
 
-# 파일 소유권을 애플리케이션 사용자로 변경
-RUN chown memberuser:membergroup app.jar
+# 프로필 이미지 업로드 디렉터리 생성 (app.image.upload-dir=images 기준, /app/images/profile)
+# /app 은 root 소유이므로 비특권 유저가 쓸 수 있도록 미리 생성한다.
+RUN mkdir -p /app/images/profile
+
+# 파일/디렉터리 소유권을 애플리케이션 사용자로 변경
+RUN chown -R memberuser:membergroup app.jar /app/images
 
 # 비특권 사용자로 전환
 USER memberuser
