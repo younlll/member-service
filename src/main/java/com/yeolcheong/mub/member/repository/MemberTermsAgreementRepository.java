@@ -8,4 +8,5 @@ import com.yeolcheong.mub.member.domain.MemberTermsAgreement;
 @Repository
 public interface MemberTermsAgreementRepository extends JpaRepository<MemberTermsAgreement, Long> {
 
+	void deleteByMemberId(Long memberId);
 }

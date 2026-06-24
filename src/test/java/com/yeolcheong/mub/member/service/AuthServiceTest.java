@@ -148,6 +148,31 @@ class AuthServiceTest {
 		}
 
 		@Test
+		@DisplayName("should reactivate withdrawn member and return isNewMember=true on re-signup")
+		void shouldReactivateWithdrawnMemberOnResignup() {
+			// given — 같은 socialId 의 탈퇴(DELETED) 회원이 다시 로그인
+			Member withdrawnMember = Member.builder()
+				.id(TEST_MEMBER_ID)
+				.snsProvider(SnsProvider.KAKAO)
+				.socialId(TEST_SOCIAL_ID)
+				.email(TEST_EMAIL)
+				.status(MemberStatus.DELETED)
+				.build();
+			stubKakaoLoginFlow(TEST_SOCIAL_ID, TEST_EMAIL);
+			given(memberService.findBySocialId(SnsProvider.KAKAO, TEST_SOCIAL_ID))
+				.willReturn(Optional.of(withdrawnMember));
+			stubJwtIssuance();
+
+			// when
+			LoginResponse response = authService.login("auth-code");
+
+			// then
+			assertThat(response.getIsNewMember()).isTrue();
+			then(memberService).should(times(1)).reactivateForResignup(withdrawnMember);
+			then(memberService).should(never()).createdFromSnsUser(any());
+		}
+
+		@Test
 		@DisplayName("should save refresh token to redis on login")
 		void shouldSaveRefreshTokenToRedisOnLogin() {
 			// given
