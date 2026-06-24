@@ -1,5 +1,11 @@
 package com.yeolcheong.mub.member.service;
 
+import java.util.Collection;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.stream.Collectors;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -103,6 +109,48 @@ public class ProfileImageService {
 		MemberProfileImage image = profileImageRepository.findById(imageId)
 			.orElseThrow(() -> new MemberServiceApiException(ErrorCode.PROFILE_IMAGE_NOT_FOUND));
 		return toResponse(image.getFilePath());
+	}
+
+	/**
+	 * 여러 회원의 공개 프로필 이미지 URL을 한 번에 조회한다.
+	 * <p>
+	 * 커스텀 이미지가 없거나(이미지 행이 삭제되어) 연결이 끊긴 회원은 기본 이미지 URL로 채운다.
+	 * 서비스 간 회원 요약 조회(배치)에서 회원 수만큼 개별 조회(N+1) 없이 URL을 얻기 위한 용도다.
+	 *
+	 * @param members URL을 조회할 회원들
+	 * @return 회원 ID → 공개 프로필 이미지 URL 매핑(모든 회원에 대해 값이 채워짐)
+	 */
+	public Map<Long, String> resolveImageUrls(Collection<Member> members) {
+		if (members == null || members.isEmpty()) {
+			return Map.of();
+		}
+
+		String defaultUrl = imageProperties.toPublicUrl(imageProperties.defaultProfilePath());
+
+		List<Long> imageIds = members.stream()
+			.map(Member::getImageId)
+			.filter(Objects::nonNull)
+			.distinct()
+			.toList();
+
+		Map<Long, String> filePathByImageId = profileImageRepository.findAllById(imageIds).stream()
+			.collect(Collectors.toMap(MemberProfileImage::getId, MemberProfileImage::getFilePath));
+
+		return members.stream().collect(Collectors.toMap(
+			Member::getId,
+			member -> resolvePublicUrl(member.getImageId(), filePathByImageId, defaultUrl),
+			(existing, replacement) -> existing));
+	}
+
+	/**
+	 * imageId로 공개 URL을 해석한다. imageId가 없거나 이미지 행이 없으면 기본 이미지 URL을 반환한다.
+	 */
+	private String resolvePublicUrl(Long imageId, Map<Long, String> filePathByImageId, String defaultUrl) {
+		if (imageId == null) {
+			return defaultUrl;
+		}
+		String filePath = filePathByImageId.get(imageId);
+		return filePath == null ? defaultUrl : imageProperties.toPublicUrl(filePath);
 	}
 
 	private Member findMember(Long memberId) {
