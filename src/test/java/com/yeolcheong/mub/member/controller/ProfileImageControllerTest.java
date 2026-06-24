@@ -22,6 +22,7 @@ import com.yeolcheong.mub.member.config.SecurityConfig;
 import com.yeolcheong.mub.member.dto.ProfileImageResponse;
 import com.yeolcheong.mub.member.security.JwtAuthenticationFilter;
 import com.yeolcheong.mub.member.security.JwtTokenProvider;
+import com.yeolcheong.mub.member.repository.MemberRepository;
 import com.yeolcheong.mub.member.service.ProfileImageService;
 
 @WebMvcTest(controllers = ProfileImageController.class)
@@ -44,6 +45,9 @@ class ProfileImageControllerTest {
 
 	@MockitoBean
 	private JwtTokenProvider jwtTokenProvider;
+
+	@MockitoBean
+	private MemberRepository memberRepository;
 
 	@Test
 	@DisplayName("POST /api/members/me/profile-image - returns 201 with image url on success")
