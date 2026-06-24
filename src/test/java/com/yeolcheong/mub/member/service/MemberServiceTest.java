@@ -22,14 +22,22 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import com.yeolcheong.mub.member.domain.District;
+import com.yeolcheong.mub.member.domain.InterestOption;
+import com.yeolcheong.mub.member.domain.InterestType;
 import com.yeolcheong.mub.member.domain.MemberStatus;
 import com.yeolcheong.mub.member.domain.SnsProvider;
 import com.yeolcheong.mub.member.domain.Member;
+import com.yeolcheong.mub.member.domain.MemberInterest;
 import com.yeolcheong.mub.member.dto.MemberInfoResponse;
 import com.yeolcheong.mub.member.dto.MemberSummaryResponse;
+import com.yeolcheong.mub.member.dto.ProfileResponse;
+import com.yeolcheong.mub.member.dto.ProfileUpdateRequest;
 import com.yeolcheong.mub.member.dto.SnsUserInfoResponse;
 import com.yeolcheong.mub.member.exception.ErrorCode;
 import com.yeolcheong.mub.member.exception.MemberServiceApiException;
+import com.yeolcheong.mub.member.repository.DistrictRepository;
+import com.yeolcheong.mub.member.repository.MemberInterestRepository;
 import com.yeolcheong.mub.member.repository.MemberRepository;
 import com.yeolcheong.mub.member.repository.RefreshTokenRepository;
 
@@ -41,6 +49,10 @@ class MemberServiceTest {
 	private MemberRepository memberRepository;
 	@Mock
 	private RefreshTokenRepository refreshTokenRepository;
+	@Mock
+	private DistrictRepository districtRepository;
+	@Mock
+	private MemberInterestRepository memberInterestRepository;
 
 	@InjectMocks
 	private MemberService memberService;
@@ -181,6 +193,130 @@ class MemberServiceTest {
 				.satisfies(ex -> assertThat(((MemberServiceApiException) ex).getErrorCode())
 					.isEqualTo(ErrorCode.ALREADY_WITHDRAWN));
 			verify(refreshTokenRepository, never()).deleteByMemberId(any());
+		}
+	}
+
+	// =========================================================
+	// getMyProfile / updateProfile
+	// =========================================================
+	@Nested
+	@DisplayName("getMyProfile / updateProfile")
+	class Profile {
+
+		@Test
+		@DisplayName("getMyProfile - returns profile with interests")
+		void getMyProfile_success() {
+			// given
+			given(memberRepository.findById(1L)).willReturn(Optional.of(testMember));
+			given(memberInterestRepository.findAllByMemberId(1L)).willReturn(List.of());
+
+			// when
+			ProfileResponse response = memberService.getMyProfile(1L);
+
+			// then
+			assertSoftly(softly -> {
+				softly.assertThat(response.getMemberId()).isEqualTo(1L);
+				softly.assertThat(response.getNickname()).isEqualTo("테스터");
+				softly.assertThat(response.getInterests()).isEmpty();
+			});
+		}
+
+		@Test
+		@DisplayName("updateProfile - updates nickname, bio, region and interests")
+		void updateProfile_success() {
+			// given
+			given(memberRepository.findById(1L)).willReturn(Optional.of(testMember));
+			given(districtRepository.findByDistCode1AndDistCode2("11", "11680"))
+				.willReturn(Optional.of(buildDistrict()));
+			given(memberInterestRepository.findAllByMemberId(1L)).willReturn(List.of());
+			given(memberInterestRepository.save(any(MemberInterest.class)))
+				.willAnswer(inv -> inv.getArgument(0));
+
+			// when
+			ProfileResponse response = memberService.updateProfile(1L, buildRequest("새닉네임"));
+
+			// then
+			assertSoftly(softly -> {
+				softly.assertThat(testMember.getNickname()).isEqualTo("새닉네임");
+				softly.assertThat(testMember.getBio()).isEqualTo("한줄소개");
+				softly.assertThat(testMember.getRegionProvince()).isEqualTo("서울특별시");
+				softly.assertThat(testMember.getRegionCity()).isEqualTo("강남구");
+				softly.assertThat(response.getInterests()).hasSize(1);
+			});
+			verify(memberRepository, times(1)).save(testMember);
+		}
+
+		@Test
+		@DisplayName("updateProfile - throws INVALID_DISTRICT_CODE when district is invalid")
+		void updateProfile_invalidDistrict() {
+			given(memberRepository.findById(1L)).willReturn(Optional.of(testMember));
+			given(districtRepository.findByDistCode1AndDistCode2(any(), any())).willReturn(Optional.empty());
+
+			assertThatThrownBy(() -> memberService.updateProfile(1L, buildRequest("닉네임")))
+				.isInstanceOf(MemberServiceApiException.class)
+				.satisfies(ex -> assertThat(((MemberServiceApiException) ex).getErrorCode())
+					.isEqualTo(ErrorCode.INVALID_DISTRICT_CODE));
+		}
+
+		@Test
+		@DisplayName("updateProfile - throws MEMBER_NOT_FOUND when member is withdrawn")
+		void updateProfile_withdrawnMember() {
+			Member deleted = Member.builder()
+				.id(5L).snsProvider(SnsProvider.KAKAO).socialId("5").email("d@x.com")
+				.status(MemberStatus.DELETED).build();
+			given(memberRepository.findById(5L)).willReturn(Optional.of(deleted));
+
+			assertThatThrownBy(() -> memberService.updateProfile(5L, buildRequest("닉네임")))
+				.isInstanceOf(MemberServiceApiException.class)
+				.satisfies(ex -> assertThat(((MemberServiceApiException) ex).getErrorCode())
+					.isEqualTo(ErrorCode.MEMBER_NOT_FOUND));
+		}
+
+		@Test
+		@DisplayName("updateProfile - throws INVALID_INTEREST_OPTION when option not allowed for type")
+		void updateProfile_invalidInterestOption() {
+			given(memberRepository.findById(1L)).willReturn(Optional.of(testMember));
+			given(districtRepository.findByDistCode1AndDistCode2("11", "11680"))
+				.willReturn(Optional.of(buildDistrict()));
+			given(memberInterestRepository.findAllByMemberId(1L)).willReturn(List.of());
+
+			// EXERCISE_SPORTS 에 허용되지 않는 옵션을 SELF_DEVELOPMENT 타입에 섞어 보냄
+			InterestOption invalidForType = pickInvalidOption(InterestType.SELF_DEVELOPMENT);
+			ProfileUpdateRequest request = ProfileUpdateRequest.builder()
+				.nickname("닉네임").bio("한줄소개").distCode1("11").distCode2("11680")
+				.interests(List.of(new ProfileUpdateRequest.InterestRequest(
+					InterestType.SELF_DEVELOPMENT, List.of(invalidForType))))
+				.build();
+
+			assertThatThrownBy(() -> memberService.updateProfile(1L, request))
+				.isInstanceOf(MemberServiceApiException.class)
+				.satisfies(ex -> assertThat(((MemberServiceApiException) ex).getErrorCode())
+					.isEqualTo(ErrorCode.INVALID_INTEREST_OPTION));
+		}
+
+		private District buildDistrict() {
+			return District.builder()
+				.distCode1("11").distCode1Name("서울특별시")
+				.distCode2("11680").distCode2Name("강남구")
+				.build();
+		}
+
+		private ProfileUpdateRequest buildRequest(String nickname) {
+			InterestType type = InterestType.SELF_DEVELOPMENT;
+			InterestOption option = type.getAvailableOptions().get(0);
+			return ProfileUpdateRequest.builder()
+				.nickname(nickname).bio("한줄소개").distCode1("11").distCode2("11680")
+				.interests(List.of(new ProfileUpdateRequest.InterestRequest(type, List.of(option))))
+				.build();
+		}
+
+		private InterestOption pickInvalidOption(InterestType type) {
+			for (InterestOption option : InterestOption.values()) {
+				if (!type.getAvailableOptions().contains(option)) {
+					return option;
+				}
+			}
+			throw new IllegalStateException("no invalid option available for " + type);
 		}
 	}
 
