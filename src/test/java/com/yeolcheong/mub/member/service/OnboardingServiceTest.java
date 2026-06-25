@@ -22,6 +22,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.mock.web.MockMultipartFile;
 
+import com.yeolcheong.mub.member.client.GroupClient;
 import com.yeolcheong.mub.member.domain.MemberStatus;
 import com.yeolcheong.mub.member.domain.SnsProvider;
 import com.yeolcheong.mub.member.domain.District;
@@ -62,7 +63,7 @@ class OnboardingServiceTest {
 	@Mock
 	private ProfileImageStorage profileImageStorage;
 	@Mock
-	private CouponService couponService;
+	private GroupClient groupClient;
 
 	@InjectMocks
 	private OnboardingService onboardingService;
@@ -352,7 +353,7 @@ class OnboardingServiceTest {
 			onboardingService.completeOnboarding(1L, buildValidRequest("닉네임", 1), null);
 
 			// then
-			then(couponService).should(times(1)).issueWelcomeVoucher(1L);
+			then(groupClient).should(times(1)).issueWelcomeVoucher(1L);
 		}
 
 		@Test
@@ -360,7 +361,7 @@ class OnboardingServiceTest {
 		void shouldCompleteOnboardingEvenWhenVoucherIssuanceFails() {
 			// given
 			setupCommonMocks();
-			given(couponService.issueWelcomeVoucher(1L)).willThrow(new RuntimeException("issue failed"));
+			willThrow(new RuntimeException("issue failed")).given(groupClient).issueWelcomeVoucher(1L);
 
 			// when
 			OnboardingResponse response = onboardingService.completeOnboarding(1L, buildValidRequest("닉네임", 1), null);

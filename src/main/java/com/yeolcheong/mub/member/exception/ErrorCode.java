@@ -25,7 +25,6 @@ public enum ErrorCode {
 
 	// 404 Not Found
 	MEMBER_NOT_FOUND(HttpStatus.NOT_FOUND, "E40401", "회원을 찾을 수 없습니다"),
-	COUPON_POLICY_NOT_FOUND(HttpStatus.NOT_FOUND, "E40402", "쿠폰 정책을 찾을 수 없습니다"),
 	PROFILE_IMAGE_NOT_FOUND(HttpStatus.NOT_FOUND, "E40403", "프로필 이미지를 찾을 수 없습니다"),
 
 	// 409 Conflict
@@ -35,7 +34,6 @@ public enum ErrorCode {
 	// 500 Internal Server Error
 	INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "E50001", "서버 내부 오류가 발생했습니다"),
 	EXTERNAL_API_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "E50002", "외부 API 호출 중 오류가 발생했습니다"),
-	COUPON_POLICY_INVALID(HttpStatus.INTERNAL_SERVER_ERROR, "E50003", "쿠폰 정책 설정이 올바르지 않습니다"),
 	IMAGE_UPLOAD_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "E50004", "이미지 업로드에 실패했습니다"),
 
 	// 401 Unauthorized
