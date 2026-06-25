@@ -7,6 +7,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.yeolcheong.mub.member.client.GroupClient;
 import com.yeolcheong.mub.member.domain.MemberStatus;
 import com.yeolcheong.mub.member.domain.District;
 import com.yeolcheong.mub.member.domain.InterestOption;
@@ -44,7 +45,7 @@ public class OnboardingService {
 	private final MemberInterestRepository memberInterestRepository;
 	private final MemberProfileImageRepository memberProfileImageRepository;
 	private final ProfileImageStorage profileImageStorage;
-	private final CouponService couponService;
+	private final GroupClient groupClient;
 
 	@Transactional
 	public OnboardingResponse completeOnboarding(
@@ -119,7 +120,7 @@ public class OnboardingService {
 	 */
 	private void issueWelcomeVoucher(Long memberId) {
 		try {
-			couponService.issueWelcomeVoucher(memberId);
+			groupClient.issueWelcomeVoucher(memberId);
 		} catch (Exception e) {
 			log.error("Failed to issue welcome voucher: memberId={}", memberId, e);
 		}
