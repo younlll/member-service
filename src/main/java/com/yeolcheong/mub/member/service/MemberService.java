@@ -203,17 +203,19 @@ public class MemberService {
 
 		List<MemberInterest> result = new ArrayList<>();
 		for (ProfileUpdateRequest.InterestRequest request : requests) {
-			validateInterestOptions(request.getInterestType(), request.getOptions());
+			// 선호 편의시설(옵션)은 선택 사항 — 미입력(null)이면 빈 목록으로 정규화
+			List<InterestOption> options = request.getOptions() != null ? request.getOptions() : List.of();
+			validateInterestOptions(request.getInterestType(), options);
 
 			MemberInterest interest = existingMap.get(request.getInterestType());
 			if (interest != null) {
-				interest.replaceOptions(request.getOptions());
+				interest.replaceOptions(options);
 			} else {
 				interest = MemberInterest.builder()
 					.member(member)
 					.interestType(request.getInterestType())
 					.build();
-				request.getOptions().forEach(interest::addOption);
+				options.forEach(interest::addOption);
 			}
 			result.add(memberInterestRepository.save(interest));
 		}
@@ -224,8 +226,9 @@ public class MemberService {
 	 * 관심사 옵션 유효성 검사 (최소 1개 + 해당 관심사 허용 옵션 여부).
 	 */
 	private void validateInterestOptions(InterestType interestType, List<InterestOption> options) {
+		// 선호 편의시설(옵션)은 선택 사항 — 없으면(null/0개) 검증할 것이 없어 통과
 		if (options == null || options.isEmpty()) {
-			throw new MemberServiceApiException("관심사별 옵션은 최소 1개 이상 선택해야 합니다", ErrorCode.INTEREST_OPTION_REQUIRED);
+			return;
 		}
 
 		List<InterestOption> available = interestType.getAvailableOptions();
