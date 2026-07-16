@@ -207,7 +207,9 @@ public class OnboardingService {
 				.interestType(interestType)
 				.build();
 
-			options.forEach(memberInterest::addOption);
+			if (options != null) {
+				options.forEach(memberInterest::addOption);
+			}
 
 			memberInterestRepository.save(memberInterest);
 		}
@@ -217,8 +219,9 @@ public class OnboardingService {
 	 * 관심사 옵션 유효성 검사
 	 */
 	private void validateInterestOptions(InterestType interestType, List<InterestOption> options) {
+		// 선호 편의시설(옵션)은 선택 사항 — 없으면(null/0개) 검증할 것이 없어 통과
 		if (options == null || options.isEmpty()) {
-			throw new MemberServiceApiException("관심사별 옵션은 최소 1개 이상 선택해야 합니다", ErrorCode.INTEREST_OPTION_REQUIRED);
+			return;
 		}
 
 		List<InterestOption> availableOptions = interestType.getAvailableOptions();

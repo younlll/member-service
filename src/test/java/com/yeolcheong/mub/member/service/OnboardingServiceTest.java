@@ -540,35 +540,37 @@ class OnboardingServiceTest {
 		}
 
 		@Test
-		@DisplayName("should throw INTEREST_OPTION_REQUIRED when interest has null options")
-		void shouldThrowInterestOptionRequiredWhenInterestHasNullOptions() {
+		@DisplayName("should succeed when interest has null options (편의시설 선택 사항)")
+		void shouldSucceedWhenInterestHasNullOptions() {
 			// given
 			setupTermsAndDistrictMocks();
+			given(memberInterestRepository.save(any(MemberInterest.class)))
+				.willReturn(MemberInterest.builder().build());
 			OnboardingRequest request = buildRequestWithInterests(
 				List.of(new OnboardingRequest.InterestRequest(InterestType.SELF_DEVELOPMENT, null))
 			);
 
 			// when & then
-			assertThatThrownBy(() -> onboardingService.completeOnboarding(1L, request, null))
-				.isInstanceOf(MemberServiceApiException.class)
-				.satisfies(ex -> assertThat(((MemberServiceApiException)ex).getErrorCode())
-					.isEqualTo(ErrorCode.INTEREST_OPTION_REQUIRED));
+			assertThatCode(() -> onboardingService.completeOnboarding(1L, request, null))
+				.doesNotThrowAnyException();
+			then(memberInterestRepository).should(times(1)).save(any(MemberInterest.class));
 		}
 
 		@Test
-		@DisplayName("should throw INTEREST_OPTION_REQUIRED when interest has empty options")
-		void shouldThrowInterestOptionRequiredWhenInterestHasEmptyOptions() {
+		@DisplayName("should succeed when interest has empty options (편의시설 0개 허용)")
+		void shouldSucceedWhenInterestHasEmptyOptions() {
 			// given
 			setupTermsAndDistrictMocks();
+			given(memberInterestRepository.save(any(MemberInterest.class)))
+				.willReturn(MemberInterest.builder().build());
 			OnboardingRequest request = buildRequestWithInterests(
 				List.of(new OnboardingRequest.InterestRequest(InterestType.SELF_DEVELOPMENT, List.of()))
 			);
 
 			// when & then
-			assertThatThrownBy(() -> onboardingService.completeOnboarding(1L, request, null))
-				.isInstanceOf(MemberServiceApiException.class)
-				.satisfies(ex -> assertThat(((MemberServiceApiException)ex).getErrorCode())
-					.isEqualTo(ErrorCode.INTEREST_OPTION_REQUIRED));
+			assertThatCode(() -> onboardingService.completeOnboarding(1L, request, null))
+				.doesNotThrowAnyException();
+			then(memberInterestRepository).should(times(1)).save(any(MemberInterest.class));
 		}
 
 		@Test

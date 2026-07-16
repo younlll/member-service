@@ -56,7 +56,7 @@
 ```
 
 제약: `nickname` 필수·최대 10자·정규식 `^[가-힣a-zA-Z0-9]+$`, `bio` 최대 30자,
-`distCode1`/`distCode2` 필수, `interests` 1~3개·각 항목 `options` 최소 1개.
+`distCode1`/`distCode2` 필수, `interests` 1~3개(필수). 각 항목 `options`(선호 편의시설)는 **선택** — 미입력·0개 허용.
 
 ### 성공 (200)
 

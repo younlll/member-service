@@ -48,8 +48,7 @@ public class ProfileUpdateRequest {
 		@NotNull(message = "관심사 유형은 필수입니다")
 		private InterestType interestType;
 
-		@NotNull(message = "관심사 옵션은 필수입니다")
-		@Size(min = 1, message = "관심사별 옵션은 최소 1개 이상 선택해야 합니다")
+		// 선호 편의시설(옵션)은 선택 사항 — 미입력(null)·0개 허용
 		private List<InterestOption> options;
 	}
 }

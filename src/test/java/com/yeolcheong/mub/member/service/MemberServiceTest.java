@@ -297,6 +297,27 @@ class MemberServiceTest {
 		}
 
 		@Test
+		@DisplayName("updateProfile - succeeds when interest options are empty (편의시설 0개 허용)")
+		void updateProfile_emptyOptions() {
+			// given
+			given(memberRepository.findById(1L)).willReturn(Optional.of(testMember));
+			given(districtRepository.findByDistCode1AndDistCode2("11", "11680"))
+				.willReturn(Optional.of(buildDistrict()));
+			given(memberInterestRepository.findAllByMemberId(1L)).willReturn(List.of());
+			given(memberInterestRepository.save(any(MemberInterest.class)))
+				.willAnswer(inv -> inv.getArgument(0));
+			ProfileUpdateRequest request = ProfileUpdateRequest.builder()
+				.nickname("새닉네임").bio("한줄소개").distCode1("11").distCode2("11680")
+				.interests(List.of(new ProfileUpdateRequest.InterestRequest(
+					InterestType.SELF_DEVELOPMENT, List.of())))
+				.build();
+
+			// when & then
+			assertThatCode(() -> memberService.updateProfile(1L, request)).doesNotThrowAnyException();
+			verify(memberInterestRepository, times(1)).save(any(MemberInterest.class));
+		}
+
+		@Test
 		@DisplayName("updateProfile - throws INVALID_DISTRICT_CODE when district is invalid")
 		void updateProfile_invalidDistrict() {
 			given(memberRepository.findById(1L)).willReturn(Optional.of(testMember));
