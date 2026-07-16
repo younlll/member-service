@@ -4,6 +4,8 @@ import java.util.HashMap;
 import java.util.Map;
 
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -91,5 +93,25 @@ public class AuthController {
 
 		LoginResponse response = authService.loginWithKakaoToken(request.getAccessToken());
 		return ResponseEntity.ok(response);
+	}
+
+	/**
+	 * 로그아웃(본인). 저장된 리프레시 토큰을 무효화한다.
+	 * POST /api/auth/logout
+	 *
+	 * @return 204 No Content
+	 */
+	@PostMapping("/logout")
+	public ResponseEntity<Void> logout() {
+		Long memberId = currentMemberId();
+		log.info("Logout requested: memberId={}", memberId);
+
+		authService.logout(memberId);
+		return ResponseEntity.noContent().build();
+	}
+
+	private Long currentMemberId() {
+		Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+		return Long.valueOf(authentication.getName());
 	}
 }

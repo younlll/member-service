@@ -5,6 +5,7 @@ import java.util.List;
 
 import org.springframework.boot.autoconfigure.security.servlet.PathRequest;
 import org.springframework.context.annotation.Bean;
+import org.springframework.http.HttpMethod;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -43,6 +44,8 @@ public class SecurityConfig {
 			.cors(cors -> cors.configurationSource(corsConfigurationSource()))
 			.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 			.authorizeHttpRequests(auth -> auth
+				// 로그아웃은 인증 필요(본인 리프레시 토큰 무효화). /api/auth/** permitAll 보다 먼저 평가되어야 한다.
+				.requestMatchers(HttpMethod.POST, "/api/auth/logout").authenticated()
 				.requestMatchers(
 					"/api/auth/**",
 					"/api/districts/**",
