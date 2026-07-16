@@ -11,7 +11,10 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.yeolcheong.mub.member.dto.AccountInfoResponse;
 import com.yeolcheong.mub.member.dto.MemberInfoResponse;
+import com.yeolcheong.mub.member.dto.NotificationSettingsResponse;
+import com.yeolcheong.mub.member.dto.NotificationSettingsUpdateRequest;
 import com.yeolcheong.mub.member.dto.ProfileResponse;
 import com.yeolcheong.mub.member.dto.ProfileUpdateRequest;
 import com.yeolcheong.mub.member.service.MemberService;
@@ -63,6 +66,44 @@ public class MemberController {
 
 		MemberInfoResponse response = memberService.getMemberByEmail(email);
 		return ResponseEntity.ok(response);
+	}
+
+	/**
+	 * 내 계정 정보 조회(본인) — 연결된 카카오 계정(email·snsProvider) 등.
+	 * GET /api/members/me/account
+	 */
+	@GetMapping("/me/account")
+	public ResponseEntity<AccountInfoResponse> getMyAccount() {
+		Long memberId = currentMemberId();
+		log.info("Account info lookup requested: memberId={}", memberId);
+
+		return ResponseEntity.ok(memberService.getMyAccount(memberId));
+	}
+
+	/**
+	 * 알림 설정 조회(본인) — 광고성(마케팅) 수신 동의 여부.
+	 * GET /api/members/me/notification-settings
+	 */
+	@GetMapping("/me/notification-settings")
+	public ResponseEntity<NotificationSettingsResponse> getNotificationSettings() {
+		Long memberId = currentMemberId();
+		log.info("Notification settings lookup requested: memberId={}", memberId);
+
+		return ResponseEntity.ok(memberService.getNotificationSettings(memberId));
+	}
+
+	/**
+	 * 알림 설정 수정(본인) — 광고성(마케팅) 수신 동의 토글.
+	 * PUT /api/members/me/notification-settings
+	 */
+	@PutMapping("/me/notification-settings")
+	public ResponseEntity<NotificationSettingsResponse> updateNotificationSettings(
+		@Valid @RequestBody NotificationSettingsUpdateRequest request) {
+		Long memberId = currentMemberId();
+		log.info("Notification settings update requested: memberId={}", memberId);
+
+		return ResponseEntity.ok(
+			memberService.updateNotificationSettings(memberId, request.getMarketingAgreed()));
 	}
 
 	/**

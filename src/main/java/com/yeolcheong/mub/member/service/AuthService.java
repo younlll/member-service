@@ -57,6 +57,18 @@ public class AuthService {
 		return issueTokensForKakaoUser(snsUserInfoResponse);
 	}
 
+	/**
+	 * 로그아웃. 저장된 리프레시 토큰을 무효화해 이후 토큰 재발급을 차단한다.
+	 * 액세스 토큰은 만료 전까지 유효하므로 클라이언트가 폐기해야 한다.
+	 *
+	 * @param memberId 인증된 본인 회원 ID
+	 */
+	@Transactional
+	public void logout(Long memberId) {
+		refreshTokenRepository.deleteByMemberId(memberId);
+		log.info("Logout: memberId={}", memberId);
+	}
+
 	@Transactional
 	public TokenRefreshResponse refreshAccessToken(String refreshToken) {
 		log.info("Access token reissue requested");

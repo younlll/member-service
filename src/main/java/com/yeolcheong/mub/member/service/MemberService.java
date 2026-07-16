@@ -19,9 +19,13 @@ import com.yeolcheong.mub.member.domain.InterestType;
 import com.yeolcheong.mub.member.domain.Member;
 import com.yeolcheong.mub.member.domain.MemberInterest;
 import com.yeolcheong.mub.member.domain.MemberStatus;
+import com.yeolcheong.mub.member.domain.MemberTermsAgreement;
 import com.yeolcheong.mub.member.domain.SnsProvider;
+import com.yeolcheong.mub.member.domain.TermsType;
+import com.yeolcheong.mub.member.dto.AccountInfoResponse;
 import com.yeolcheong.mub.member.dto.MemberInfoResponse;
 import com.yeolcheong.mub.member.dto.MemberSummaryResponse;
+import com.yeolcheong.mub.member.dto.NotificationSettingsResponse;
 import com.yeolcheong.mub.member.dto.ProfileResponse;
 import com.yeolcheong.mub.member.dto.ProfileUpdateRequest;
 import com.yeolcheong.mub.member.dto.SnsUserInfoResponse;
@@ -105,6 +109,52 @@ public class MemberService {
 		List<MemberInterest> interests = memberInterestRepository.findAllByMemberId(memberId);
 
 		return ProfileResponse.from(member, interests);
+	}
+
+	/**
+	 * 내 계정 정보(연결된 소셜 계정) 조회.
+	 * 마이페이지 '계정정보'에서 카카오 연결 계정을 표시하는 데 사용한다.
+	 */
+	public AccountInfoResponse getMyAccount(Long memberId) {
+		return AccountInfoResponse.from(findById(memberId));
+	}
+
+	/**
+	 * 알림 설정(광고성 수신 동의) 조회. 동의 이력이 없으면 미동의(false)로 본다.
+	 */
+	public NotificationSettingsResponse getNotificationSettings(Long memberId) {
+		boolean marketingAgreed = memberTermsAgreementRepository
+			.findByMemberIdAndTermsType(memberId, TermsType.MARKETING)
+			.map(MemberTermsAgreement::getAgreed)
+			.orElse(false);
+
+		return NotificationSettingsResponse.of(marketingAgreed);
+	}
+
+	/**
+	 * 알림 설정(광고성 수신 동의) 수정(토글). 기존 동의 이력이 있으면 갱신하고, 없으면 새로 생성한다.
+	 */
+	@Transactional
+	public NotificationSettingsResponse updateNotificationSettings(Long memberId, boolean marketingAgreed) {
+		Member member = findById(memberId);
+
+		MemberTermsAgreement agreement = memberTermsAgreementRepository
+			.findByMemberIdAndTermsType(memberId, TermsType.MARKETING)
+			.orElse(null);
+
+		if (agreement == null) {
+			agreement = MemberTermsAgreement.builder()
+				.member(member)
+				.termsType(TermsType.MARKETING)
+				.agreed(marketingAgreed)
+				.build();
+		} else {
+			agreement.updateAgreed(marketingAgreed);
+		}
+		memberTermsAgreementRepository.save(agreement);
+
+		log.info("Notification settings updated: memberId={}, marketingAgreed={}", memberId, marketingAgreed);
+		return NotificationSettingsResponse.of(marketingAgreed);
 	}
 
 	/**

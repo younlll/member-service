@@ -419,6 +419,21 @@ class AuthServiceTest {
 		}
 	}
 
+	@Nested
+	@DisplayName("logout")
+	class Logout {
+
+		@Test
+		@DisplayName("should invalidate the stored refresh token")
+		void logout_deletesRefreshToken() {
+			// when
+			authService.logout(TEST_MEMBER_ID);
+
+			// then
+			then(refreshTokenRepository).should(times(1)).deleteByMemberId(TEST_MEMBER_ID);
+		}
+	}
+
 	// =========================================================
 	// Helpers
 	// =========================================================
