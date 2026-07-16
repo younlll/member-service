@@ -27,11 +27,15 @@ import com.yeolcheong.mub.member.domain.District;
 import com.yeolcheong.mub.member.domain.InterestOption;
 import com.yeolcheong.mub.member.domain.InterestType;
 import com.yeolcheong.mub.member.domain.MemberStatus;
+import com.yeolcheong.mub.member.domain.MemberTermsAgreement;
 import com.yeolcheong.mub.member.domain.SnsProvider;
+import com.yeolcheong.mub.member.domain.TermsType;
 import com.yeolcheong.mub.member.domain.Member;
 import com.yeolcheong.mub.member.domain.MemberInterest;
+import com.yeolcheong.mub.member.dto.AccountInfoResponse;
 import com.yeolcheong.mub.member.dto.MemberInfoResponse;
 import com.yeolcheong.mub.member.dto.MemberSummaryResponse;
+import com.yeolcheong.mub.member.dto.NotificationSettingsResponse;
 import com.yeolcheong.mub.member.dto.ProfileResponse;
 import com.yeolcheong.mub.member.dto.ProfileUpdateRequest;
 import com.yeolcheong.mub.member.dto.SnsUserInfoResponse;
@@ -727,6 +731,99 @@ class MemberServiceTest {
 			// then
 			assertThat(result).isEmpty();
 			verify(memberRepository, never()).findAllById(any());
+		}
+	}
+
+	// =========================================================
+	// getMyAccount
+	// =========================================================
+	@Nested
+	@DisplayName("getMyAccount")
+	class GetMyAccount {
+
+		@Test
+		@DisplayName("should return connected social account info")
+		void getMyAccount_success() {
+			// given
+			given(memberRepository.findById(1L)).willReturn(Optional.of(testMember));
+
+			// when
+			AccountInfoResponse result = memberService.getMyAccount(1L);
+
+			// then
+			assertSoftly(softly -> {
+				softly.assertThat(result.getMemberId()).isEqualTo(1L);
+				softly.assertThat(result.getEmail()).isEqualTo("test@example.com");
+				softly.assertThat(result.getSnsProvider()).isEqualTo(SnsProvider.KAKAO);
+				softly.assertThat(result.getSocialId()).isEqualTo("1234567890");
+			});
+		}
+	}
+
+	// =========================================================
+	// notification settings (marketing consent)
+	// =========================================================
+	@Nested
+	@DisplayName("notification settings")
+	class NotificationSettings {
+
+		@Test
+		@DisplayName("get - returns true when a marketing agreement exists and is agreed")
+		void get_existingAgreed() {
+			// given
+			MemberTermsAgreement agreement = MemberTermsAgreement.builder()
+				.member(testMember).termsType(TermsType.MARKETING).agreed(true).build();
+			given(memberTermsAgreementRepository.findByMemberIdAndTermsType(1L, TermsType.MARKETING))
+				.willReturn(Optional.of(agreement));
+
+			// when & then
+			assertThat(memberService.getNotificationSettings(1L).isMarketingAgreed()).isTrue();
+		}
+
+		@Test
+		@DisplayName("get - defaults to false when no marketing agreement exists")
+		void get_absentDefaultsFalse() {
+			// given
+			given(memberTermsAgreementRepository.findByMemberIdAndTermsType(1L, TermsType.MARKETING))
+				.willReturn(Optional.empty());
+
+			// when & then
+			assertThat(memberService.getNotificationSettings(1L).isMarketingAgreed()).isFalse();
+		}
+
+		@Test
+		@DisplayName("update - toggles the existing agreement")
+		void update_existing() {
+			// given
+			MemberTermsAgreement agreement = MemberTermsAgreement.builder()
+				.member(testMember).termsType(TermsType.MARKETING).agreed(false).build();
+			given(memberRepository.findById(1L)).willReturn(Optional.of(testMember));
+			given(memberTermsAgreementRepository.findByMemberIdAndTermsType(1L, TermsType.MARKETING))
+				.willReturn(Optional.of(agreement));
+
+			// when
+			NotificationSettingsResponse result = memberService.updateNotificationSettings(1L, true);
+
+			// then
+			assertThat(result.isMarketingAgreed()).isTrue();
+			assertThat(agreement.getAgreed()).isTrue();
+			then(memberTermsAgreementRepository).should().save(agreement);
+		}
+
+		@Test
+		@DisplayName("update - creates a new agreement when none exists")
+		void update_createsWhenAbsent() {
+			// given
+			given(memberRepository.findById(1L)).willReturn(Optional.of(testMember));
+			given(memberTermsAgreementRepository.findByMemberIdAndTermsType(1L, TermsType.MARKETING))
+				.willReturn(Optional.empty());
+
+			// when
+			NotificationSettingsResponse result = memberService.updateNotificationSettings(1L, true);
+
+			// then
+			assertThat(result.isMarketingAgreed()).isTrue();
+			then(memberTermsAgreementRepository).should().save(any(MemberTermsAgreement.class));
 		}
 	}
 }
