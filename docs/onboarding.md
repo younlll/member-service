@@ -38,7 +38,7 @@
 - `termsAgreementRequest`의 `termsOfService`/`privacyPolicy`/`locationService`는
   `@AssertTrue` — `true`가 아니면 검증 실패. `marketing`은 선택(기본 false).
 - `nickname` 필수·최대 10자·정규식 `^[가-힣a-zA-Z0-9]+$`.
-- `distCode1`/`distCode2` 필수. `interests` 1~3개, 각 `options` 최소 1개.
+- `distCode1`/`distCode2` 필수. `interests` 1~3개(필수). 각 `options`(선호 편의시설)는 **선택** — 미입력·0개 허용.
 
 ### 성공 (201) — member 11(INACTIVE)로 실제 실행
 

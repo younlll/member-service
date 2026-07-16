@@ -430,7 +430,7 @@ public class OnboardingRequest {
     // 관심사별 옵션
     public static class InterestRequest {
         @NotNull private InterestType interestType;
-        @NotNull @Size(min = 1, message = "관심사별 옵션은 최소 1개 이상 선택해야 합니다")
+        // 선호 편의시설(옵션)은 선택 사항 — 미입력/0개 허용
         private List<InterestOption> options;
     }
 }
@@ -626,7 +626,7 @@ KakaoClient (WebClient 기반)
 | `ALREADY_ONBOARDED` (E40005) | 400 | 이미 회원가입이 완료된 회원입니다 |
 | `TERMS_AGREEMENT_REQUIRED` (E40006) | 400 | 필수 약관에 동의해야 합니다 |
 | `INVALID_INTEREST_COUNT` (E40007) | 400 | 관심사는 1개 이상 3개 이하로 선택해야 합니다 |
-| `INTEREST_OPTION_REQUIRED` (E40008) | 400 | 관심사별 옵션은 최소 1개 이상 선택해야 합니다 |
+| `INTEREST_OPTION_REQUIRED` (E40008) | — | (미사용) 옵션이 선택 사항으로 변경되어 더 이상 발생하지 않음 |
 | `INVALID_INTEREST_OPTION` (E40009) | 400 | 해당 관심사에 유효하지 않은 옵션입니다 |
 | `INVALID_DISTRICT_CODE` (E40010) | 400 | 유효하지 않은 지역 코드입니다 |
 | `MEMBER_NOT_FOUND` (E40401) | 404 | 회원을 찾을 수 없습니다 |
