@@ -30,6 +30,7 @@ public enum ErrorCode {
 	MEMBER_NOT_FOUND(HttpStatus.NOT_FOUND, "E40401", "회원을 찾을 수 없습니다"),
 	PROFILE_IMAGE_NOT_FOUND(HttpStatus.NOT_FOUND, "E40403", "프로필 이미지를 찾을 수 없습니다"),
 	MEMBERSHIP_PRODUCT_NOT_FOUND(HttpStatus.NOT_FOUND, "E40404", "멤버십 상품을 찾을 수 없습니다"),
+	MEMBERSHIP_NOT_FOUND(HttpStatus.NOT_FOUND, "E40405", "가입한 멤버십이 없습니다"),
 
 	// 409 Conflict
 	DUPLICATE_NICKNAME(HttpStatus.CONFLICT, "E40901", "이미 사용 중인 닉네임입니다"),

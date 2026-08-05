@@ -5,10 +5,12 @@ import java.time.LocalDate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.yeolcheong.mub.member.domain.Membership;
 import com.yeolcheong.mub.member.domain.MembershipCohort;
 import com.yeolcheong.mub.member.domain.MembershipPlan;
 import com.yeolcheong.mub.member.domain.MembershipStatus;
 import com.yeolcheong.mub.member.dto.MembershipProductResponse;
+import com.yeolcheong.mub.member.dto.MembershipResponse;
 import com.yeolcheong.mub.member.exception.ErrorCode;
 import com.yeolcheong.mub.member.exception.MemberServiceApiException;
 import com.yeolcheong.mub.member.repository.MembershipCohortRepository;
@@ -50,5 +52,21 @@ public class MembershipService {
 		log.info("Membership product fetched | plan={}, cohort={}, recruiting={}, subscribers={}",
 			plan.getName(), cohort.getCohortNumber(), recruiting, currentSubscribers);
 		return MembershipProductResponse.from(plan, cohort, recruiting, currentSubscribers);
+	}
+
+	/**
+	 * 내 멤버십 조회('내 멤버십' 화면). 현재 이용 중(ACTIVE)인 멤버십을 반환한다.
+	 *
+	 * @param memberId 요청 회원 ID
+	 * @return 내 멤버십 정보
+	 * @throws MemberServiceApiException 이용 중인 멤버십이 없을 때 {@link ErrorCode#MEMBERSHIP_NOT_FOUND}
+	 */
+	public MembershipResponse getMyMembership(Long memberId) {
+		Membership membership = membershipRepository
+			.findFirstByMemberIdAndStatusOrderByExpiresAtDesc(memberId, MembershipStatus.ACTIVE)
+			.orElseThrow(() -> new MemberServiceApiException(ErrorCode.MEMBERSHIP_NOT_FOUND));
+
+		log.info("My membership fetched | memberId={}, cohort={}", memberId, membership.getCohort().getCohortNumber());
+		return MembershipResponse.from(membership);
 	}
 }

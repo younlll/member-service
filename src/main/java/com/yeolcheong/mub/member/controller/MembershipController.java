@@ -43,6 +43,18 @@ public class MembershipController {
 	}
 
 	/**
+	 * 내 멤버십 조회('내 멤버십' 화면). 현재 이용 중인 멤버십을 반환한다.
+	 *
+	 * @return 내 멤버십 정보
+	 */
+	@GetMapping("/me")
+	public ResponseEntity<MembershipResponse> getMyMembership() {
+		Long memberId = currentMemberId();
+		log.info("GET my membership | memberId={}", memberId);
+		return ResponseEntity.ok(membershipService.getMyMembership(memberId));
+	}
+
+	/**
 	 * 멤버십 구매 검증. 앱이 스토어 결제 완료 후 전달한 정보를 서버가 검증하고 멤버십을 활성화한다.
 	 *
 	 * @param request 플랫폼·상품ID·구매토큰
