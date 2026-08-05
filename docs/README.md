@@ -54,6 +54,7 @@ Spring Security 기본 동작에 따라 **HTTP 403**과 **빈 응답 본문**을
 | `E40011` | 400 | 유효하지 않은 이미지 파일입니다 |
 | `E40101` | 401 | 유효하지 않은 토큰입니다(refresh/카카오 토큰) |
 | `E40401` | 404 | 회원을 찾을 수 없습니다 |
+| `E40404` | 404 | 멤버십 상품을 찾을 수 없습니다 |
 | `E50001` | 500 | 서버 내부 오류가 발생했습니다 |
 
 ## 엔드포인트 그룹
@@ -62,6 +63,7 @@ Spring Security 기본 동작에 따라 **HTTP 403**과 **빈 응답 본문**을
 |---|---|---|---|
 | 인증/로그인 (`/api/auth`) | [auth.md](auth.md) | public | Kakao 의존 |
 | 회원 (`/api/members`) | [members.md](members.md) | 필요 | |
+| 멤버십 (`/api/memberships`) | [membership.md](membership.md) | 필요 | IAP 구독(B1 상품조회) |
 | 프로필 이미지 (`/api/members/me/profile-image`) | [profile-image.md](profile-image.md) | 필요 | multipart |
 | 온보딩 (`/api/onboarding`) | [onboarding.md](onboarding.md) | 필요 | multipart |
 | 지역 (`/api/districts`) | [districts.md](districts.md) | public | |
