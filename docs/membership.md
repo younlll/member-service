@@ -55,6 +55,57 @@ curl "http://localhost:8083/api/memberships/product" \
 
 ---
 
+## POST `/api/memberships/purchase` — 멤버십 구매 검증
+
+앱이 스토어 결제를 완료한 뒤 검증 정보를 전달하면, 서버가 **Apple App Store Server API / Google Play Developer API**
+로 구매를 검증하고 멤버십을 활성화합니다. 서버는 페이로드가 아닌 **스토어 조회 결과**로 상태를 확정하며,
+동일 거래의 재검증은 **멱등**(기존 멤버십 갱신) 처리합니다.
+
+- **인증**: 필요 (JWT Bearer) — 회원은 토큰의 `sub`(memberId)로 식별
+- **Body**:
+  - `platform` (`APPLE` | `GOOGLE`, 필수)
+  - `productId` (필수) — 구매한 스토어 상품 ID
+  - `purchaseToken` (필수) — Apple `transactionId` / Google `purchaseToken`
+- **검증 규칙**: 스토어 검증 성공 + 상품 ID가 플랜의 해당 플랫폼 상품 ID와 일치해야 활성화. 활성화 시 최신 기수에 귀속.
+
+### 요청
+```bash
+curl -X POST "http://localhost:8083/api/memberships/purchase" \
+  -H "Authorization: Bearer <accessToken>" \
+  -H "Content-Type: application/json" \
+  -d '{"platform":"APPLE","productId":"com.mub.app.membership.monthly","purchaseToken":"<transactionId>"}'
+```
+
+### Success — `200 OK`
+```json
+{
+  "membershipId": 5,
+  "memberId": 1,
+  "planName": "머브크루",
+  "cohortNumber": 3,
+  "platform": "APPLE",
+  "status": "ACTIVE",
+  "startedAt": "2026-08-05T16:00:00",
+  "expiresAt": "2026-09-05T16:00:00"
+}
+```
+
+### Failure
+| 상황 | status | 응답 |
+|---|---|---|
+| 필수 필드 누락 | 400 | `{"code":"E40001", "errors":[...], ...}` |
+| 스토어 검증 실패(무효 구매) | 400 | `{"code":"E40013","message":"구매 검증에 실패했습니다", ...}` |
+| 구매 상품이 멤버십 상품과 불일치 | 400 | `{"code":"E40014","message":"구매한 상품이 멤버십 상품과 일치하지 않습니다", ...}` |
+| 지원하지 않는 플랫폼 | 400 | `{"code":"E40015","message":"지원하지 않는 결제 플랫폼입니다", ...}` |
+| 인증 토큰 없음/무효 | 403 | (빈 본문) |
+
+> **스토어 연동 설정**(gitignore 되는 properties): `iap.apple.*`(keyId·issuerId·bundleId·privateKeyPath·baseUrl),
+> `iap.google.*`(packageName·serviceAccountKeyPath·baseUrl). `.p8`/서비스계정 JSON 파일은 커밋/이미지에 포함하지 않습니다.
+> Google 검증은 서비스계정에 Play Console **재무 데이터 보기** 권한이 부여되어 있어야 합니다.
+> ⚠️ 실제 스토어 응답에 대한 **라이브 검증은 샌드박스 계정/실상품 등록 후** 별도 수행이 필요합니다.
+
+---
+
 ## 초기 데이터(seed) — 참고
 
 `member-service`는 SQL 시더가 없습니다(리소스 seed 미사용). 로컬/운영에서 상품을 노출하려면
