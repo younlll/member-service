@@ -1,5 +1,6 @@
 package com.yeolcheong.mub.member.controller;
 
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.BDDMockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.*;
@@ -18,11 +19,17 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import com.yeolcheong.mub.member.config.SecurityConfig;
+import com.yeolcheong.mub.member.domain.MembershipPlatform;
+import com.yeolcheong.mub.member.domain.MembershipStatus;
 import com.yeolcheong.mub.member.dto.MembershipProductResponse;
+import com.yeolcheong.mub.member.dto.MembershipResponse;
 import com.yeolcheong.mub.member.repository.MemberRepository;
 import com.yeolcheong.mub.member.security.JwtAuthenticationFilter;
 import com.yeolcheong.mub.member.security.JwtTokenProvider;
+import com.yeolcheong.mub.member.service.MembershipPurchaseService;
 import com.yeolcheong.mub.member.service.MembershipService;
+
+import org.springframework.http.MediaType;
 
 @WebMvcTest(controllers = MembershipController.class)
 @Import({SecurityConfig.class, JwtAuthenticationFilter.class})
@@ -34,6 +41,9 @@ class MembershipControllerTest {
 
 	@MockitoBean
 	private MembershipService membershipService;
+
+	@MockitoBean
+	private MembershipPurchaseService membershipPurchaseService;
 
 	@MockitoBean
 	private JwtTokenProvider jwtTokenProvider;
@@ -69,6 +79,45 @@ class MembershipControllerTest {
 	@DisplayName("GET /api/memberships/product - returns 4xx when unauthenticated")
 	void getMembershipProductRequiresAuth() throws Exception {
 		mockMvc.perform(get("/api/memberships/product"))
+			.andDo(print())
+			.andExpect(status().is4xxClientError());
+	}
+
+	@Test
+	@DisplayName("POST /api/memberships/purchase - returns 200 with activated membership when authenticated")
+	@WithMockUser(username = "1")
+	void purchaseReturns200() throws Exception {
+		given(membershipPurchaseService.verifyAndActivate(eq(1L), any())).willReturn(
+			MembershipResponse.builder()
+				.membershipId(5L).memberId(1L).planName("머브크루").cohortNumber(3)
+				.platform(MembershipPlatform.APPLE).status(MembershipStatus.ACTIVE).build());
+
+		mockMvc.perform(post("/api/memberships/purchase")
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("{\"platform\":\"APPLE\",\"productId\":\"com.mub.app.membership.monthly\",\"purchaseToken\":\"tok\"}"))
+			.andDo(print())
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.status").value("ACTIVE"))
+			.andExpect(jsonPath("$.cohortNumber").value(3));
+	}
+
+	@Test
+	@DisplayName("POST /api/memberships/purchase - returns 400 when a required field is missing")
+	@WithMockUser(username = "1")
+	void purchaseReturns400WhenFieldMissing() throws Exception {
+		mockMvc.perform(post("/api/memberships/purchase")
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("{\"platform\":\"APPLE\"}"))
+			.andDo(print())
+			.andExpect(status().isBadRequest());
+	}
+
+	@Test
+	@DisplayName("POST /api/memberships/purchase - returns 4xx when unauthenticated")
+	void purchaseRequiresAuth() throws Exception {
+		mockMvc.perform(post("/api/memberships/purchase")
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("{\"platform\":\"APPLE\",\"productId\":\"com.mub.app.membership.monthly\",\"purchaseToken\":\"tok\"}"))
 			.andDo(print())
 			.andExpect(status().is4xxClientError());
 	}
