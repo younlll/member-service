@@ -84,6 +84,44 @@ class MembershipControllerTest {
 	}
 
 	@Test
+	@DisplayName("GET /api/memberships/me - returns 200 with my active membership")
+	@WithMockUser(username = "1")
+	void getMyMembershipReturns200() throws Exception {
+		given(membershipService.getMyMembership(1L)).willReturn(
+			MembershipResponse.builder()
+				.membershipId(7L).memberId(1L).planName("머브크루").cohortNumber(3)
+				.platform(MembershipPlatform.APPLE).status(MembershipStatus.ACTIVE).build());
+
+		mockMvc.perform(get("/api/memberships/me"))
+			.andDo(print())
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.membershipId").value(7L))
+			.andExpect(jsonPath("$.status").value("ACTIVE"));
+	}
+
+	@Test
+	@DisplayName("GET /api/memberships/me - returns 404 when the member has no membership")
+	@WithMockUser(username = "1")
+	void getMyMembershipReturns404() throws Exception {
+		given(membershipService.getMyMembership(1L))
+			.willThrow(new com.yeolcheong.mub.member.exception.MemberServiceApiException(
+				com.yeolcheong.mub.member.exception.ErrorCode.MEMBERSHIP_NOT_FOUND));
+
+		mockMvc.perform(get("/api/memberships/me"))
+			.andDo(print())
+			.andExpect(status().isNotFound())
+			.andExpect(jsonPath("$.code").value("E40405"));
+	}
+
+	@Test
+	@DisplayName("GET /api/memberships/me - returns 4xx when unauthenticated")
+	void getMyMembershipRequiresAuth() throws Exception {
+		mockMvc.perform(get("/api/memberships/me"))
+			.andDo(print())
+			.andExpect(status().is4xxClientError());
+	}
+
+	@Test
 	@DisplayName("POST /api/memberships/purchase - returns 200 with activated membership when authenticated")
 	@WithMockUser(username = "1")
 	void purchaseReturns200() throws Exception {

@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.*;
 import static org.mockito.BDDMockito.*;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -15,10 +16,13 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import com.yeolcheong.mub.member.domain.Membership;
 import com.yeolcheong.mub.member.domain.MembershipCohort;
 import com.yeolcheong.mub.member.domain.MembershipPlan;
+import com.yeolcheong.mub.member.domain.MembershipPlatform;
 import com.yeolcheong.mub.member.domain.MembershipStatus;
 import com.yeolcheong.mub.member.dto.MembershipProductResponse;
+import com.yeolcheong.mub.member.dto.MembershipResponse;
 import com.yeolcheong.mub.member.exception.ErrorCode;
 import com.yeolcheong.mub.member.exception.MemberServiceApiException;
 import com.yeolcheong.mub.member.repository.MembershipCohortRepository;
@@ -113,6 +117,45 @@ class MembershipServiceTest {
 				.isInstanceOf(MemberServiceApiException.class)
 				.extracting("errorCode")
 				.isEqualTo(ErrorCode.MEMBERSHIP_PRODUCT_NOT_FOUND);
+		}
+	}
+
+	@Nested
+	@DisplayName("getMyMembership")
+	class GetMyMembership {
+
+		@Test
+		@DisplayName("returns the member's active membership")
+		void returnsActiveMembership() {
+			// given
+			MembershipPlan plan = buildPlan();
+			Membership membership = Membership.builder()
+				.id(7L).memberId(1L).cohort(buildCohort(plan, LocalDate.now().minusDays(1), LocalDate.now().plusDays(10)))
+				.platform(MembershipPlatform.APPLE).storeTransactionId("txn_1").productId("com.mub.app.membership.monthly")
+				.status(MembershipStatus.ACTIVE).startedAt(LocalDateTime.now().minusDays(2))
+				.expiresAt(LocalDateTime.now().plusDays(28)).build();
+			given(membershipRepository.findFirstByMemberIdAndStatusOrderByExpiresAtDesc(1L, MembershipStatus.ACTIVE))
+				.willReturn(Optional.of(membership));
+
+			// when
+			MembershipResponse response = membershipService.getMyMembership(1L);
+
+			// then
+			assertThat(response.getMembershipId()).isEqualTo(7L);
+			assertThat(response.getStatus()).isEqualTo(MembershipStatus.ACTIVE);
+			assertThat(response.getCohortNumber()).isEqualTo(3);
+		}
+
+		@Test
+		@DisplayName("throws MEMBERSHIP_NOT_FOUND when the member has no active membership")
+		void throwsWhenNoActiveMembership() {
+			given(membershipRepository.findFirstByMemberIdAndStatusOrderByExpiresAtDesc(1L, MembershipStatus.ACTIVE))
+				.willReturn(Optional.empty());
+
+			assertThatThrownBy(() -> membershipService.getMyMembership(1L))
+				.isInstanceOf(MemberServiceApiException.class)
+				.extracting("errorCode")
+				.isEqualTo(ErrorCode.MEMBERSHIP_NOT_FOUND);
 		}
 	}
 
