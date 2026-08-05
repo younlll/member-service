@@ -55,6 +55,39 @@ curl "http://localhost:8083/api/memberships/product" \
 
 ---
 
+## GET `/api/memberships/me` — 내 멤버십 조회
+
+'내 멤버십' 화면용. 현재 **이용 중(ACTIVE)** 인 멤버십을 반환합니다. 없으면 404(클라이언트는 가입 유도 화면 노출).
+
+- **인증**: 필요 (JWT Bearer)
+
+### 요청
+```bash
+curl "http://localhost:8083/api/memberships/me" -H "Authorization: Bearer <accessToken>"
+```
+
+### Success — `200 OK`
+```json
+{
+  "membershipId": 7,
+  "memberId": 1,
+  "planName": "머브크루",
+  "cohortNumber": 3,
+  "platform": "APPLE",
+  "status": "ACTIVE",
+  "startedAt": "2026-08-03T14:00:00",
+  "expiresAt": "2026-09-03T14:00:00"
+}
+```
+
+### Failure
+| 상황 | status | 응답 |
+|---|---|---|
+| 인증 토큰 없음/무효 | 403 | (빈 본문) |
+| 이용 중인 멤버십 없음 | 404 | `{"code":"E40405","message":"가입한 멤버십이 없습니다", ...}` |
+
+---
+
 ## POST `/api/memberships/purchase` — 멤버십 구매 검증
 
 앱이 스토어 결제를 완료한 뒤 검증 정보를 전달하면, 서버가 **Apple App Store Server API / Google Play Developer API**
