@@ -52,8 +52,13 @@ Spring Security 기본 동작에 따라 **HTTP 403**과 **빈 응답 본문**을
 | `E40009` | 400 | 해당 관심사에 유효하지 않은 옵션입니다(동적 메시지) |
 | `E40010` | 400 | 유효하지 않은 지역 코드입니다 |
 | `E40011` | 400 | 유효하지 않은 이미지 파일입니다 |
+| `E40013` | 400 | 구매 검증에 실패했습니다 |
+| `E40014` | 400 | 구매한 상품이 멤버십 상품과 일치하지 않습니다 |
+| `E40015` | 400 | 지원하지 않는 결제 플랫폼입니다 |
 | `E40101` | 401 | 유효하지 않은 토큰입니다(refresh/카카오 토큰) |
 | `E40401` | 404 | 회원을 찾을 수 없습니다 |
+| `E40404` | 404 | 멤버십 상품을 찾을 수 없습니다 |
+| `E40405` | 404 | 가입한 멤버십이 없습니다 |
 | `E50001` | 500 | 서버 내부 오류가 발생했습니다 |
 
 ## 엔드포인트 그룹
@@ -62,6 +67,7 @@ Spring Security 기본 동작에 따라 **HTTP 403**과 **빈 응답 본문**을
 |---|---|---|---|
 | 인증/로그인 (`/api/auth`) | [auth.md](auth.md) | public | Kakao 의존 |
 | 회원 (`/api/members`) | [members.md](members.md) | 필요 | |
+| 멤버십 (`/api/memberships`) | [membership.md](membership.md) | 필요 | IAP 구독(상품조회·구매검증) |
 | 프로필 이미지 (`/api/members/me/profile-image`) | [profile-image.md](profile-image.md) | 필요 | multipart |
 | 온보딩 (`/api/onboarding`) | [onboarding.md](onboarding.md) | 필요 | multipart |
 | 지역 (`/api/districts`) | [districts.md](districts.md) | public | |

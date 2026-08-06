@@ -22,10 +22,15 @@ public enum ErrorCode {
 	INVALID_DISTRICT_CODE(HttpStatus.BAD_REQUEST, "E40010", "유효하지 않은 지역 코드입니다"),
 	INVALID_IMAGE_FILE(HttpStatus.BAD_REQUEST, "E40011", "유효하지 않은 이미지 파일입니다"),
 	ALREADY_WITHDRAWN(HttpStatus.BAD_REQUEST, "E40012", "이미 탈퇴한 회원입니다"),
+	MEMBERSHIP_VERIFICATION_FAILED(HttpStatus.BAD_REQUEST, "E40013", "구매 검증에 실패했습니다"),
+	MEMBERSHIP_PRODUCT_MISMATCH(HttpStatus.BAD_REQUEST, "E40014", "구매한 상품이 멤버십 상품과 일치하지 않습니다"),
+	UNSUPPORTED_PLATFORM(HttpStatus.BAD_REQUEST, "E40015", "지원하지 않는 결제 플랫폼입니다"),
 
 	// 404 Not Found
 	MEMBER_NOT_FOUND(HttpStatus.NOT_FOUND, "E40401", "회원을 찾을 수 없습니다"),
 	PROFILE_IMAGE_NOT_FOUND(HttpStatus.NOT_FOUND, "E40403", "프로필 이미지를 찾을 수 없습니다"),
+	MEMBERSHIP_PRODUCT_NOT_FOUND(HttpStatus.NOT_FOUND, "E40404", "멤버십 상품을 찾을 수 없습니다"),
+	MEMBERSHIP_NOT_FOUND(HttpStatus.NOT_FOUND, "E40405", "가입한 멤버십이 없습니다"),
 
 	// 409 Conflict
 	DUPLICATE_NICKNAME(HttpStatus.CONFLICT, "E40901", "이미 사용 중인 닉네임입니다"),
