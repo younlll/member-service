@@ -139,6 +139,43 @@ curl -X POST "http://localhost:8083/api/memberships/purchase" \
 
 ---
 
+## POST `/api/memberships/webhook/apple` · `/google` — 스토어 구독 웹훅
+
+Apple(App Store Server Notifications V2)·Google(Play RTDN, Pub/Sub push)이 **구독 상태 변경(갱신·해지·만료)** 을 통지하는 엔드포인트입니다.
+서버는 **페이로드를 신뢰하지 않고 거래 식별자만 추출**한 뒤, 스토어에 재조회(구매검증과 동일 경로)하여 상태를 확정하고 멤버십을 갱신합니다.
+
+- **인증**: 불필요 (public) — 스토어 서버가 호출. `/api/memberships/webhook/**` 는 화이트리스트
+- **동작**:
+  - 유효(갱신·활성) → 멤버십 `ACTIVE` + 만료일 갱신
+  - 무효(만료·해지·환불·취소) → 멤버십 `EXPIRED`
+  - 알 수 없는 거래/토큰 → 무시(ack)
+- **응답**: 항상 `200 OK`(빈 본문)로 ack
+
+### Apple 요청
+```bash
+curl -X POST "http://localhost:8083/api/memberships/webhook/apple" \
+  -H "Content-Type: application/json" \
+  -d '{"signedPayload":"<JWS>"}'
+```
+- `signedPayload`(JWS) → `notificationType` + `data.signedTransactionInfo`(JWS) → `originalTransactionId`·`productId` 추출
+
+### Google 요청
+```bash
+curl -X POST "http://localhost:8083/api/memberships/webhook/google" \
+  -H "Content-Type: application/json" \
+  -d '{"message":{"data":"<base64 JSON>","messageId":"..."}}'
+```
+- `message.data`(base64) → `subscriptionNotification.purchaseToken`·`subscriptionId`·`notificationType` 추출
+
+### Success — `200 OK`
+(빈 본문)
+
+> **설정**: Apple은 App Store Connect에 이 URL을 App Store Server Notifications V2로 등록,
+> Google은 Play Console RTDN → Pub/Sub 토픽 → 이 URL을 push 구독으로 연결해야 합니다.
+> ⚠️ 현재 무효 판정 시 즉시 `EXPIRED` 로 전환합니다(재조회 일시 실패와 실제 만료를 구분하지 않음 — 운영 전 보완 대상).
+
+---
+
 ## 초기 데이터(seed) — 참고
 
 `member-service`는 SQL 시더가 없습니다(리소스 seed 미사용). 로컬/운영에서 상품을 노출하려면
