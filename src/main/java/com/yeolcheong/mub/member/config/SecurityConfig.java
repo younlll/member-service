@@ -50,7 +50,8 @@ public class SecurityConfig {
 					"/api/auth/**",
 					"/api/districts/**",
 					"/api/interests",
-					"/api/internal/**"
+					"/api/internal/**",
+					"/api/memberships/webhook/**"
 				).permitAll()
 				.anyRequest().authenticated()
 			)

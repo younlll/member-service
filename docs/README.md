@@ -67,7 +67,8 @@ Spring Security 기본 동작에 따라 **HTTP 403**과 **빈 응답 본문**을
 |---|---|---|---|
 | 인증/로그인 (`/api/auth`) | [auth.md](auth.md) | public | Kakao 의존 |
 | 회원 (`/api/members`) | [members.md](members.md) | 필요 | |
-| 멤버십 (`/api/memberships`) | [membership.md](membership.md) | 필요 | IAP 구독(상품조회·구매검증) |
+| 멤버십 (`/api/memberships`) | [membership.md](membership.md) | 필요 | IAP 구독(상품조회·구매검증·내멤버십) |
+| 멤버십 웹훅 (`/api/memberships/webhook`) | [membership.md](membership.md) | public | Apple ASSN V2 / Google RTDN |
 | 프로필 이미지 (`/api/members/me/profile-image`) | [profile-image.md](profile-image.md) | 필요 | multipart |
 | 온보딩 (`/api/onboarding`) | [onboarding.md](onboarding.md) | 필요 | multipart |
 | 지역 (`/api/districts`) | [districts.md](districts.md) | public | |
