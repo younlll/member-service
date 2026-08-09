@@ -4,6 +4,7 @@ import java.util.Arrays;
 import java.util.List;
 
 import org.springframework.boot.autoconfigure.security.servlet.PathRequest;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.http.HttpMethod;
 import org.springframework.context.annotation.Configuration;
@@ -26,10 +27,12 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 @Configuration
 @EnableWebSecurity
+@EnableConfigurationProperties(CorsProperties.class)
 @RequiredArgsConstructor
 public class SecurityConfig {
 
 	private final JwtAuthenticationFilter jwtAuthenticationFilter;
+	private final CorsProperties corsProperties;
 
 	@Bean
 	public WebSecurityCustomizer webSecurityCustomizer() {
@@ -64,11 +67,11 @@ public class SecurityConfig {
 	public CorsConfigurationSource corsConfigurationSource() {
 		CorsConfiguration configuration = new CorsConfiguration();
 
-		configuration.setAllowedOrigins(Arrays.asList(
-			"http://localhost:3000",
-			"capacitor://localhost",
-			"ionic://localhost"
-		));
+		// 허용 출처는 배포 환경별로 주입된다(app.cors.allowed-origins).
+		// 패턴 등록이라 http://localhost:* 같은 와일드카드도 그대로 쓸 수 있다.
+		List<String> origins = corsProperties.resolvedOrigins();
+		configuration.setAllowedOriginPatterns(origins);
+		log.info("CORS allowed origins: {}", origins);
 
 		configuration.setAllowedMethods(Arrays.asList(
 			"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"
