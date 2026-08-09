@@ -37,6 +37,18 @@ Railway가 레포 루트의 `Dockerfile`을 자동 감지한다. 이미지의 �
 | `SWAGGER_ENABLED` | `false` | QA 기간에만 `true` |
 | `JWT_ACCESS_TOKEN_EXPIRATION` | `86400000` | ms |
 
+## 인앱결제(IAP) 환경변수 — 구독 기능 사용 시에만
+
+스토어 상품 등록 전에는 비워 둬도 기동에 지장이 없다. 멤버십 구매검증(`POST /api/memberships/purchase`)과
+구독 웹훅(`POST /api/memberships/webhook/*`) 호출 시점에만 필요하다.
+
+| 변수 | 비고 |
+|---|---|
+| `IAP_APPLE_KEY_ID` / `IAP_APPLE_ISSUER_ID` / `IAP_APPLE_BUNDLE_ID` | App Store Connect API 키 정보 |
+| `IAP_APPLE_PRIVATE_KEY_PATH` | `.p8` 파일 경로 — **저장소·이미지에 포함 금지**, 볼륨/시크릿 파일로 주입 |
+| `IAP_GOOGLE_PACKAGE_NAME` | Android 패키지명 |
+| `IAP_GOOGLE_SERVICE_ACCOUNT_KEY_PATH` | 서비스계정 JSON 경로 — **저장소·이미지에 포함 금지** |
+
 ## 배포 전 체크리스트
 
 - [ ] `SPRING_PROFILES_ACTIVE=prod` 설정 (미설정 시 `docker` 프로필로 떠서 localhost DB를 찾는다)
