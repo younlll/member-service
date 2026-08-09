@@ -48,17 +48,20 @@ RUN chown -R memberuser:membergroup app.jar /app/images
 # 비특권 사용자로 전환
 USER memberuser
 
-# 컨테이너가 사용할 포트 노출
+# 컨테이너가 사용할 포트 노출 (배포 플랫폼이 PORT 를 주입하면 그 값으로 바인딩된다)
 EXPOSE 8083
 
-# 헬스체크 설정
+# 활성 프로필. -D 시스템 프로퍼티로 고정하면 배포 플랫폼의 환경변수로 덮어쓸 수 없으므로
+# ENV 로 기본값만 주고, Railway 등에서는 SPRING_PROFILES_ACTIVE=prod 로 재정의한다.
+ENV SPRING_PROFILES_ACTIVE=docker
+
+# 헬스체크 설정 (PORT 주입 시 그 포트를 검사)
 HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
-    CMD curl -f http://localhost:8083/actuator/health || exit 1
+    CMD curl -f http://localhost:${PORT:-8083}/actuator/health || exit 1
 
 # JVM 최적화 옵션과 함께 애플리케이션 실행
 ENTRYPOINT ["java", \
     "-Djava.security.egd=file:/dev/./urandom", \
-    "-Dspring.profiles.active=docker", \
     "-Xms256m", \
     "-Xmx512m", \
     "-XX:+UseZGC", \
