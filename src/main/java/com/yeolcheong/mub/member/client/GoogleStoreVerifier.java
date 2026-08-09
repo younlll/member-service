@@ -38,7 +38,7 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class GoogleStoreVerifier implements StorePurchaseVerifier {
 
-	private static final String TOKEN_URL = "https://oauth2.googleapis.com/token";
+	private static final String DEFAULT_TOKEN_URL = "https://oauth2.googleapis.com/token";
 	private static final String SCOPE = "https://www.googleapis.com/auth/androidpublisher";
 	private static final String ACTIVE_STATE = "SUBSCRIPTION_STATE_ACTIVE";
 	private static final long JWT_TTL_SECONDS = 3600;
@@ -107,7 +107,7 @@ public class GoogleStoreVerifier implements StorePurchaseVerifier {
 		Instant now = Instant.now();
 		String assertion = Jwts.builder()
 			.issuer(clientEmail)
-			.audience().add(TOKEN_URL).and()
+			.audience().add(resolveTokenUrl()).and()
 			.claim("scope", SCOPE)
 			.issuedAt(Date.from(now))
 			.expiration(Date.from(now.plusSeconds(JWT_TTL_SECONDS)))
@@ -167,11 +167,16 @@ public class GoogleStoreVerifier implements StorePurchaseVerifier {
 		return apiClient;
 	}
 
+	/** 설정된 토큰 URL(미설정 시 기본값). */
+	private String resolveTokenUrl() {
+		return properties.getTokenUrl() != null ? properties.getTokenUrl() : DEFAULT_TOKEN_URL;
+	}
+
 	private WebClient tokenClient() {
 		if (tokenClient == null) {
 			synchronized (this) {
 				if (tokenClient == null) {
-					tokenClient = webClientBuilder.baseUrl(TOKEN_URL).build();
+					tokenClient = webClientBuilder.baseUrl(resolveTokenUrl()).build();
 				}
 			}
 		}

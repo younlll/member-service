@@ -24,4 +24,7 @@ public class GoogleIapProperties {
 
 	/** Google Play Developer API base URL. */
 	private String baseUrl;
+
+	/** OAuth2 토큰 발급 URL. 미설정 시 기본값(https://oauth2.googleapis.com/token) 사용. */
+	private String tokenUrl;
 }
